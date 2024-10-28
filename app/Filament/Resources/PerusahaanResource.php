@@ -19,7 +19,20 @@ class PerusahaanResource extends Resource
 {
     protected static ?string $model = Perusahaan::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?string $navigationIcon = 'heroicon-o-building-office';
+    protected static ?int $navigationSort = 3;
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
+    }
+
 
     public static function form(Form $form): Form
     {

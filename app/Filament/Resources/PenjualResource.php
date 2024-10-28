@@ -17,7 +17,19 @@ class PenjualResource extends Resource
 {
     protected static ?string $model = Penjual::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+    protected static ?int $navigationSort = 2;
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     public static function form(Form $form): Form
     {
