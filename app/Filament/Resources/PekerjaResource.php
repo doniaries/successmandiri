@@ -148,11 +148,11 @@ class PekerjaResource extends Resource
                     ->label('Edit')
                     ->color('warning')
                     ->requiresConfirmation(),
-                Tables\Actions\DeleteAction::make()
-                    ->icon('heroicon-o-trash')
-                    ->label('Hapus')
-                    ->color('danger')
-                    ->requiresConfirmation(),
+                // Tables\Actions\DeleteAction::make()
+                //     ->icon('heroicon-o-trash')
+                //     ->label('Hapus')
+                //     ->color('danger')
+                //     ->requiresConfirmation(),
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->icon('heroicon-o-eye')

@@ -22,6 +22,6 @@ class CreatePabrik extends CreateRecord
         return Notification::make()
             ->success()
             ->title('Pabrik baru ditambahkan')
-            ->body('Data pabrik berhasil ditambahkan ke database.');
+            ->body("Data pabrik {$this->record->nama} berhasil ditambahkan ke database.");
     }
 }

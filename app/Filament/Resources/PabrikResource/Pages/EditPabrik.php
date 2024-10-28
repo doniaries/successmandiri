@@ -30,7 +30,7 @@ class EditPabrik extends EditRecord
         return Notification::make()
             ->success()
             ->title('Pabrik diperbarui')
-            ->body('Data pabrik berhasil diperbarui.')
+            ->body("Data pabrik {$this->record->nama} berhasil diperbarui.")
             ->duration(5000); // Durasi tampil 5 detik
     }
 

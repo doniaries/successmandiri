@@ -2,14 +2,16 @@
 
 namespace App\Filament\Resources\PekerjaResource\Pages;
 
-use App\Filament\Resources\PekerjaResource;
 use Filament\Actions;
-use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\CreateRecord;
+use App\Filament\Resources\PekerjaResource;
+use App\Filament\Traits\HasDynamicNotification;
 
 class CreatePekerja extends CreateRecord
 {
 
+    use HasDynamicNotification;
     protected static string $resource = PekerjaResource::class;
 
     // Redirect ke index setelah create
