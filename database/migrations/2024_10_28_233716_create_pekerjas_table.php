@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('telepon')->nullable();
             $table->decimal('pendapatan', 15, 0)->default(0);  // Ubah precision dan scale
             $table->decimal('hutang', 15, 0)->default(0);      // Ubah precision dan scale
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('telepon')->nullable();
             $table->decimal('saldo', 10, 0)->nullable();
             $table->decimal('hutang', 10, 0)->nullable();
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
         });

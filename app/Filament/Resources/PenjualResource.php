@@ -36,10 +36,10 @@ class PenjualResource extends Resource
                     ->numeric(),
                 Forms\Components\TextInput::make('hutang')
                     ->numeric(),
-                Forms\Components\TextInput::make('created_by')
-                    ->numeric(),
-                Forms\Components\TextInput::make('updated_by')
-                    ->numeric(),
+                // Forms\Components\TextInput::make('created_by')
+                //     ->numeric(),
+                // Forms\Components\TextInput::make('updated_by')
+                //     ->numeric(),
             ]);
     }
 
@@ -59,12 +59,12 @@ class PenjualResource extends Resource
                 Tables\Columns\TextColumn::make('hutang')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_by')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('updated_by')
-                    ->numeric()
-                    ->sortable(),
+                // Tables\Columns\TextColumn::make('created_by')
+                //     ->numeric()
+                //     ->sortable(),
+                // Tables\Columns\TextColumn::make('updated_by')
+                //     ->numeric()
+                //     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -78,6 +78,9 @@ class PenjualResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->emptyStateHeading('Tidak ada penjual')
+            ->emptyStateIcon('heroicon-o-question-mark-circle')
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])

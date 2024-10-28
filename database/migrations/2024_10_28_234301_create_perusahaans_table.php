@@ -16,8 +16,8 @@ return new class extends Migration
             $table->foreignId('kasir_id')->nullable()->comment('Kasir Perusahaan')
                 ->constrained('users', 'id')->onDelete('set null');
             $table->boolean('is_active')->default(true)->comment('Status aktif perusahaan');
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
         });

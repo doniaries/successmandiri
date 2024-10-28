@@ -18,8 +18,8 @@ class Pekerja extends Model
         'telepon',
         'pendapatan',
         'hutang',
-        'created_by',
-        'updated_by',
+        // 'created_by',
+        // 'updated_by',
     ];
 
     protected $dates = [

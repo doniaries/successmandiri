@@ -13,7 +13,7 @@ class TransaksiDo extends Model
     protected $table = 'transaksi_do';
 
     protected $fillable = [
-        'nomor'
+        'nomor',
         'tanggal',
         'penjual_id',
         'nomor_polisi',
@@ -27,7 +27,34 @@ class TransaksiDo extends Model
         'file_do',
         'cara_bayar',
         'catatan',
-        'created_by',
-        'updated_by',
+        'deleted_at',
+        // 'created_by',
+        // 'updated_by',
     ];
+
+    protected $dates = [
+        'deleted_at',
+    ];
+
+    public function penjual()
+    {
+        return $this->belongsTo(Penjual::class);
+    }
+
+    public function pekerja()
+    {
+        return $this->belongsTo(Pekerja::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+
+    //Accessor untuk perhitungan otomatis:
+    public function getTotalAttribute($value)
+    {
+        return $this->tonase * $this->harga_satuan;
+    }
 }
