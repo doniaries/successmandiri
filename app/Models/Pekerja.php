@@ -10,6 +10,8 @@ class Pekerja extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public $table = 'pekerjas';
+
     protected $fillable = [
         'nama',
         'alamat',
@@ -20,9 +22,14 @@ class Pekerja extends Model
         'updated_by',
     ];
 
+    protected $dates = [
+        'deleted_at',
+    ];
+
+
     protected $casts = [
-        'pendapatan' => 'decimal:2',
-        'hutang' => 'decimal:2',
+        'pendapatan' => 'decimal:0',
+        'hutang' => 'decimal:0',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

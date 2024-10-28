@@ -5,12 +5,14 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PerusahaanResource\Pages;
 use App\Filament\Resources\PerusahaanResource\RelationManagers;
 use App\Models\Perusahaan;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\Relationship;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PerusahaanResource extends Resource
@@ -30,12 +32,18 @@ class PerusahaanResource extends Resource
                     ->maxLength(255),
                 Forms\Components\TextInput::make('pimpinan')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('kasir_id')
-                    ->numeric(),
-                Forms\Components\TextInput::make('created_by')
-                    ->numeric(),
-                Forms\Components\TextInput::make('updated_by')
-                    ->numeric(),
+                Forms\Components\Select::make('kasir_id')
+                    ->label('Kasir')
+                    ->relationship('user', 'name')
+                    ->preload()
+
+                    ->searchable(),
+                Forms\Components\Toggle::make('is_active')
+                    ->required(),
+                // Forms\Components\TextInput::make('created_by')
+                //     ->numeric(),
+                // Forms\Components\TextInput::make('updated_by')
+                //     ->numeric(),
             ]);
     }
 
@@ -52,12 +60,14 @@ class PerusahaanResource extends Resource
                 Tables\Columns\TextColumn::make('kasir_id')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('created_by')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('updated_by')
-                    ->numeric()
-                    ->sortable(),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->boolean(),
+                // Tables\Columns\TextColumn::make('created_by')
+                //     ->numeric()
+                //     ->sortable(),
+                // Tables\Columns\TextColumn::make('updated_by')
+                //     ->numeric()
+                //     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -72,14 +82,17 @@ class PerusahaanResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\ForceDeleteBulkAction::make(),
+                    Tables\Actions\RestoreBulkAction::make(),
                 ]),
             ]);
     }
@@ -98,5 +111,13 @@ class PerusahaanResource extends Resource
             'create' => Pages\CreatePerusahaan::route('/create'),
             'edit' => Pages\EditPerusahaan::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 }

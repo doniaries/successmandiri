@@ -2,37 +2,23 @@
 
 namespace App\Filament\Resources\PabrikResource\Pages;
 
-use App\Filament\Resources\PabrikResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
-
-namespace App\Filament\Resources\PabrikResource\Pages;
-
+use Filament\Resources\Pages\EditRecord;
 use App\Filament\Resources\PabrikResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Notifications\Notification;
+use App\Filament\Traits\HasDynamicNotification;
 
 class EditPabrik extends EditRecord
 {
-    protected static string $resource = PabrikResource::class;
 
-    // Redirect ke halaman index setelah edit
+    use HasDynamicNotification;
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
+    protected static string $resource = PabrikResource::class;
 
-    // Kustomisasi notifikasi sukses
-    protected function getSavedNotification(): ?Notification
-    {
-        return Notification::make()
-            ->success()
-            ->title('Pabrik diperbarui')
-            ->body("Data pabrik {$this->record->nama} berhasil diperbarui.")
-            ->duration(5000); // Durasi tampil 5 detik
-    }
+
 
 
 

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('alamat')->nullable();
             $table->string('pimpinan')->nullable()->comment('Pimpinan Perusahaan');
             $table->foreignId('kasir_id')->nullable()->comment('Kasir Perusahaan')
-                ->constrained('users')->onDelete('set null');
+                ->constrained('users', 'id')->onDelete('set null');
             $table->boolean('is_active')->default(true)->comment('Status aktif perusahaan');
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
