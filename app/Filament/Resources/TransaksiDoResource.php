@@ -140,7 +140,9 @@ class TransaksiDoResource extends Resource
                     }),
 
                 Forms\Components\TextInput::make('total')
-                    ->mask(RawJs::make('$money($input)'))
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.', 0)
+                    JS))
                     ->stripCharacters(',')
                     ->label('Total')
                     ->prefix('Rp ')
@@ -206,20 +208,26 @@ class TransaksiDoResource extends Resource
                     }),
 
                 Forms\Components\TextInput::make('sisa_hutang')
-                    ->mask(RawJs::make('$money($input)'))
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.', 0)
+                    JS))
                     ->stripCharacters(',')
                     ->label('Sisa Hutang')
                     ->prefix('Rp ')
+                    ->numeric()
                     ->disabled()
-                    ->dehydrated(),
+                    ->dehydrated(true),
 
                 Forms\Components\TextInput::make('sisa_bayar')
-                    ->mask(RawJs::make('$money($input)'))
+                    ->mask(RawJs::make(<<<'JS'
+                        $money($input, ',', '.', 0)
+                    JS))
                     ->stripCharacters(',')
                     ->label('Sisa Bayar')
                     ->prefix('Rp ')
+                    ->numeric()
                     ->disabled()
-                    ->dehydrated(),
+                    ->dehydrated(true),
 
                 Forms\Components\FileUpload::make('file_do')
                     ->label('File DO'),
@@ -290,6 +298,8 @@ class TransaksiDoResource extends Resource
 
                 Tables\Columns\TextColumn::make('sisa_bayar')
                     ->money('IDR')
+                    ->weight('bold')
+                    ->color(Color::Emerald)
                     ->alignEnd()
                     ->sortable(),
 
