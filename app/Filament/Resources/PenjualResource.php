@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\PenjualResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\PenjualResource\RelationManagers;
+use Pelmered\FilamentMoneyField\Tables\Columns\MoneyColumn;
+use Pelmered\FilamentMoneyField\Forms\Components\MoneyInput;
 
 class PenjualResource extends Resource
 {
@@ -33,10 +35,16 @@ class PenjualResource extends Resource
                     ->tel()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('hutang')
-                    ->prefix('Rp ')
-                    ->mask(RawJs::make('$money($input)')) //pemisah titik pada angka
-                    ->stripCharacters(',') //koma pada angka
-                    ->numeric(),
+                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2),
+
+                // ->afterStateUpdated(function (string $state, callable $set) {
+                //     // Format for display (optional)
+                //     $formattedValue = 'Rp' . number_format($state, 0, ',', '.');
+                //     $set('formatted_hutang', $formattedValue); // Store formatted value in a separate field
+
+                //     // Store raw value in the database
+                //     $set('hutang', str_replace(['Rp', '.', ','], '', $state));
+                // }),
 
             ]);
     }
@@ -52,8 +60,11 @@ class PenjualResource extends Resource
                 Tables\Columns\TextColumn::make('telepon')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('hutang')
+                    ->label('Hutang')
+                    // ->currency('IDR')
                     ->money('IDR')
-                    ->prefix('Rp '),
+                    ->sortable(),
+
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()

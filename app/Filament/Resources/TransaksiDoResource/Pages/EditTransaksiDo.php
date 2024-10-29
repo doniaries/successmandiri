@@ -71,4 +71,27 @@ class EditTransaksiDo extends EditRecord
             Actions\RestoreAction::make(),
         ];
     }
+    protected function afterFill(): void
+    {
+        $record = $this->record;
+
+        // Set nilai awal
+        $this->data['hutang'] = $record->hutang;
+        $this->data['bayar_hutang'] = $record->bayar_hutang;
+        $this->data['sisa_hutang'] = (int)($record->hutang - $record->bayar_hutang);
+        $this->data['sisa_bayar'] = (int)($record->total - $record->upah_bongkar - $record->bayar_hutang);
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        // Pastikan nilai numerik diformat dengan benar
+        $data['total'] = (int)str_replace(['Rp', '.', ','], '', $data['total'] ?? 0);
+        $data['upah_bongkar'] = (int)str_replace(['Rp', '.', ','], '', $data['upah_bongkar'] ?? 0);
+        $data['hutang'] = (int)str_replace(['Rp', '.', ','], '', $data['hutang'] ?? 0);
+        $data['bayar_hutang'] = (int)str_replace(['Rp', '.', ','], '', $data['bayar_hutang'] ?? 0);
+        $data['sisa_hutang'] = (int)($data['hutang'] - $data['bayar_hutang']);
+        $data['sisa_bayar'] = (int)($data['total'] - $data['upah_bongkar'] - $data['bayar_hutang']);
+
+        return $data;
+    }
 }

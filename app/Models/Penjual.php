@@ -17,6 +17,6 @@ class Penjual extends Model
     ];
 
     protected $casts = [
-        'hutang' => 'float',
+        'hutang' => 'decimal:0',
     ];
 }

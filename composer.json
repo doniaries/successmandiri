@@ -6,11 +6,12 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "ariaieboy/filament-currency": "*",
         "filament/filament": "^3.2",
         "laravel-lang/common": "^6.4",
         "laravel/framework": "^11.9",
-        "laravel/tinker": "^2.9",
-        "pelmered/filament-money-field": "^1.4"
+        "laravel/tinker": "^2.9"
+
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
