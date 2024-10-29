@@ -35,17 +35,7 @@ class Pekerja extends Model
         'deleted_at' => 'datetime',
     ];
 
-    // Relasi ke user yang membuat
-    public function creator()
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
 
-    // Relasi ke user yang mengupdate
-    public function editor()
-    {
-        return $this->belongsTo(User::class, 'updated_by');
-    }
 
     // Scope untuk data aktif
     public function scopeActive($query)

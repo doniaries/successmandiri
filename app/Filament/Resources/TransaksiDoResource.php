@@ -2,18 +2,20 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\TransaksiDoResource\Pages;
-use App\Models\TransaksiDo;
-use App\Models\Penjual;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
+use App\Models\Penjual;
+use Filament\Forms\Form;
 use Filament\Tables\Table;
+use App\Models\TransaksiDo;
+use Filament\Support\RawJs;
+use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Pelmered\FilamentMoneyField\Forms\Components\MoneyInput;
+use App\Filament\Resources\TransaksiDoResource\Pages;
 use Pelmered\FilamentMoneyField\Tables\Columns\MoneyColumn;
+use Pelmered\FilamentMoneyField\Forms\Components\MoneyInput;
+use Filament\Support\Colors\Color;
 
 class TransaksiDoResource extends Resource
 {
@@ -60,30 +62,29 @@ class TransaksiDoResource extends Resource
                     ->required(),
                 Forms\Components\Select::make('penjual_id')
                     ->label('Penjual')
-                    // ->autofocus()
+                    ->required()
                     ->relationship('penjual', 'nama')
                     ->searchable()
                     ->preload()
-                    ->live()
                     ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                         if (!$state) {
                             $set('hutang', 0);
                             return;
                         }
 
-                        // Ambil data penjual dan set hutang
                         $penjual = Penjual::find($state);
                         if ($penjual) {
-                            $set('hutang', $penjual->hutang); // Menggunakan kolom hutang, bukan total_hutang
+                            // Cast ke float untuk memastikan format angka benar
+                            $hutangPenjual = (float) $penjual->hutang;
+                            $set('hutang', $hutangPenjual);
 
-                            // Hitung ulang sisa bayar
+                            // Hitung sisa bayar
                             $total = floatval($get('total'));
                             $upahBongkar = floatval($get('upah_bongkar') ?? 0);
-                            $sisaBayar = $total - $upahBongkar - $penjual->hutang;
+                            $sisaBayar = $total - $upahBongkar - $hutangPenjual;
                             $set('sisa_bayar', $sisaBayar);
                         }
-                    })
-                    ->required(),
+                    }),
                 Forms\Components\TextInput::make('nomor_polisi')
                     ->placeholder('Nomor Polisi'),
 
@@ -92,55 +93,67 @@ class TransaksiDoResource extends Resource
                     ->required()
                     ->suffix('Kg')
                     ->numeric()
-                    // ->default(0)
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        $tonase = floatval($state);
-                        $hargaSatuan = floatval($get('harga_satuan'));
+                        // Kita pastikan nilai state dan harga_satuan bukan null
+                        if ($state && $get('harga_satuan')) {
+                            // Convert ke integer untuk kalkulasi yang akurat
+                            $tonase = (int)$state;
+                            $hargaSatuan = (int)str_replace(['Rp', '.', ','], '', $get('harga_satuan'));
 
-                        $total = $tonase * $hargaSatuan;
-                        $set('total', $total);
+                            // Hitung total
+                            $total = $tonase * $hargaSatuan;
+                            $set('total', $total);
 
-                        $upahBongkar = floatval($get('upah_bongkar') ?? 0);
-                        $hutang = floatval($get('hutang') ?? 0);
-
-                        $sisaBayar = $total - $upahBongkar - $hutang;
-                        $set('sisa_bayar', $sisaBayar);
+                            // Hitung sisa bayar
+                            $upahBongkar = (int)str_replace(['Rp', '.', ','], '', $get('upah_bongkar') ?? '0');
+                            $hutang = (int)str_replace(['Rp', '.', ','], '', $get('hutang') ?? '0');
+                            $sisaBayar = $total - $upahBongkar - $hutang;
+                            $set('sisa_bayar', $sisaBayar);
+                        }
                     }),
 
-                MoneyInput::make('harga_satuan')
+                Forms\Components\TextInput::make('harga_satuan')
+                    ->mask(RawJs::make('$money($input)'))
+                    ->stripCharacters(',')
                     ->label('Harga Satuan')
                     ->required()
-                    ->currency('IDR')
-                    ->locale('id_ID')
-                    // ->default(0)
+                    ->prefix('Rp ')
+                    ->numeric()
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        $hargaSatuan = floatval($state);
-                        $tonase = floatval($get('tonase'));
+                        if ($state && $get('tonase')) {
+                            // Convert ke integer untuk kalkulasi yang akurat
+                            $hargaSatuan = (int)str_replace(['Rp', '.', ','], '', $state);
+                            $tonase = (int)$get('tonase');
 
-                        $total = $tonase * $hargaSatuan;
-                        $set('total', $total);
+                            // Hitung total
+                            $total = $tonase * $hargaSatuan;
+                            $set('total', $total);
 
-                        $upahBongkar = floatval($get('upah_bongkar') ?? 0);
-                        $hutang = floatval($get('hutang') ?? 0);
-
-                        $sisaBayar = $total - $upahBongkar - $hutang;
-                        $set('sisa_bayar', $sisaBayar);
+                            // Hitung sisa bayar
+                            $upahBongkar = (int)str_replace(['Rp', '.', ','], '', $get('upah_bongkar') ?? '0');
+                            $hutang = (int)str_replace(['Rp', '.', ','], '', $get('hutang') ?? '0');
+                            $sisaBayar = $total - $upahBongkar - $hutang;
+                            $set('sisa_bayar', $sisaBayar);
+                        }
                     }),
 
-                MoneyInput::make('total')
+                Forms\Components\TextInput::make('total')
+                    ->mask(RawJs::make('$money($input)'))
+                    ->stripCharacters(',')
                     ->label('Total')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                    ->prefix('Rp ')
+                    ->numeric()
                     ->disabled()
-                    ->dehydrated(),
+                    ->dehydrated(true),
 
-                MoneyInput::make('upah_bongkar')
+                Forms\Components\TextInput::make('upah_bongkar')
+                    ->mask(RawJs::make('$money($input)')) //pemisah titik pada angka
+                    ->stripCharacters(',') //koma pada angka
                     ->label('Upah Bongkar')
-                    ->currency('IDR')
-                    ->locale('id_ID')
-                    ->default(0)
+                    ->numeric()
+                    ->prefix('Rp ')
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                         $upahBongkar = floatval($state);
@@ -154,41 +167,57 @@ class TransaksiDoResource extends Resource
                         $set('sisa_bayar', $sisaBayar);
                     }),
 
-                MoneyInput::make('hutang')
+                Forms\Components\TextInput::make('hutang')
+                    ->mask(RawJs::make('$money($input)')) //pemisah titik pada angka
+                    ->stripCharacters(',') //koma pada angka
                     ->label('Hutang')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                    ->prefix('Rp ')
+                    ->numeric()
+                    ->dehydrated(true) // Tetap simpan ke database
                     ->disabled() // Jadikan read-only karena diisi otomatis
-                    ->dehydrated() // Tetap simpan ke database
                     ->default(0),
-
-                MoneyInput::make('bayar_hutang')
+                Forms\Components\TextInput::make('bayar_hutang')
+                    ->mask(RawJs::make('$money($input)'))
+                    ->stripCharacters(',')
                     ->label('Bayar Hutang')
-                    ->currency('IDR')
-                    ->locale('id_ID')
-                    ->default(0)
+                    ->prefix('Rp ')
                     ->live(onBlur: true)
                     ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        $bayarHutang = floatval($state);
-                        $hutang = floatval($get('hutang'));
-                        $total = floatval($get('total'));
-                        $upahBongkar = floatval($get('upah_bongkar') ?? 0);
+                        if ($state) {
+                            $bayarHutang = (int)str_replace(['Rp', '.', ','], '', $state);
+                            $hutang = (int)str_replace(['Rp', '.', ','], '', $get('hutang') ?? '0');
+                            $total = (int)str_replace(['Rp', '.', ','], '', $get('total') ?? '0');
+                            $upahBongkar = (int)str_replace(['Rp', '.', ','], '', $get('upah_bongkar') ?? '0');
 
-                        // Validasi pembayaran tidak melebihi hutang
-                        if ($bayarHutang > $hutang) {
-                            $bayarHutang = $hutang;
-                            $set('bayar_hutang', $hutang);
+                            // Validasi pembayaran tidak melebihi hutang
+                            if ($bayarHutang > $hutang) {
+                                $bayarHutang = $hutang;
+                                $set('bayar_hutang', $hutang);
+                            }
+
+                            // Hitung sisa hutang
+                            $sisaHutang = $hutang - $bayarHutang;
+                            $set('sisa_hutang', $sisaHutang);
+
+                            // Hitung sisa bayar
+                            $sisaBayar = $total - $upahBongkar - $bayarHutang;
+                            $set('sisa_bayar', $sisaBayar);
                         }
-
-                        // Sisa bayar = Total - Upah Bongkar - Bayar Hutang
-                        $sisaBayar = $total - $upahBongkar - $bayarHutang;
-                        $set('sisa_bayar', $sisaBayar);
                     }),
 
-                MoneyInput::make('sisa_bayar')
+                Forms\Components\TextInput::make('sisa_hutang')
+                    ->mask(RawJs::make('$money($input)'))
+                    ->stripCharacters(',')
+                    ->label('Sisa Hutang')
+                    ->prefix('Rp ')
+                    ->disabled()
+                    ->dehydrated(),
+
+                Forms\Components\TextInput::make('sisa_bayar')
+                    ->mask(RawJs::make('$money($input)'))
+                    ->stripCharacters(',')
                     ->label('Sisa Bayar')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                    ->prefix('Rp ')
                     ->disabled()
                     ->dehydrated(),
 
@@ -212,6 +241,10 @@ class TransaksiDoResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('nomor')
+                    ->badge()
+                    ->color(function ($state) {
+                        return Color::Blue;
+                    })
                     ->searchable(),
                 Tables\Columns\TextColumn::make('tanggal')
                     ->date()
@@ -223,34 +256,55 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('tonase')
                     ->numeric()
                     ->sortable(),
-                MoneyColumn::make('harga_satuan')
-                    ->currency('IDR')
+                Tables\Columns\TextColumn::make('harga_satuan')
+                    ->money('IDR')
+                    ->alignEnd()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('total')
+                    ->color(Color::Emerald)
+                    ->weight('bold')
+                    ->money('IDR')
+                    ->alignEnd()
                     ->sortable(),
 
-                MoneyColumn::make('total')
-                    ->currency('IDR')
+                Tables\Columns\TextColumn::make('upah_bongkar')
+                    ->money('IDR')
+                    ->alignEnd()
                     ->sortable(),
 
-                MoneyColumn::make('upah_bongkar')
-                    ->currency('IDR')
+                Tables\Columns\TextColumn::make('hutang')
+                    ->color(Color::Red)
+                    ->money('IDR')
+                    ->alignEnd()
                     ->sortable(),
 
-                MoneyColumn::make('hutang')
-                    ->currency('IDR')
+                Tables\Columns\TextColumn::make('bayar_hutang')
+                    ->money('IDR')
+                    ->alignEnd()
                     ->sortable(),
 
-                MoneyColumn::make('bayar_hutang')
-                    ->currency('IDR')
+                Tables\Columns\TextColumn::make('sisa_hutang')
+                    ->money('IDR')
+                    ->alignEnd()
                     ->sortable(),
 
-                MoneyColumn::make('sisa_bayar')
-                    ->currency('IDR')
+                Tables\Columns\TextColumn::make('sisa_bayar')
+                    ->money('IDR')
+                    ->alignEnd()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('cara_bayar')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Tunai' => 'success',
+                        'Transfer' => 'info',
+                        default => 'gray',
+                    }),
+
                 Tables\Columns\TextColumn::make('file_do')
                     ->label('File DO')
                     ->url(fn($record) => $record->file_do)
                     ->searchable(),
-                Tables\Columns\TextColumn::make('cara_bayar'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -264,6 +318,7 @@ class TransaksiDoResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->striped()
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
@@ -276,6 +331,8 @@ class TransaksiDoResource extends Resource
                     Tables\Actions\ForceDeleteBulkAction::make(),
                     Tables\Actions\RestoreBulkAction::make(),
                 ]),
+
+
             ]);
     }
 

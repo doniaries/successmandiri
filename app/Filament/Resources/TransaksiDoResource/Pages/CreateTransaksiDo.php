@@ -12,28 +12,49 @@ class CreateTransaksiDo extends CreateRecord
 {
     protected static string $resource = TransaksiDoResource::class;
 
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
+    // CreateTransaksiDo.php
 
     protected function afterCreate(): void
     {
-        $record = $this->record;
+        $transaksiDo = $this->record;
 
-        if ($record->bayar_hutang > 0) {
-            $penjual = Penjual::find($record->penjual_id);
+        if ($transaksiDo->bayar_hutang > 0) {
+            $penjual = Penjual::find($transaksiDo->penjual_id);
+
             if ($penjual) {
-                // Kurangi hutang penjual
-                $penjual->hutang = max(0, $penjual->hutang - $record->bayar_hutang);
-                $penjual->save();
+                // Cast semua nilai ke float
+                $hutangAwal = (float) $penjual->hutang;
+                $bayarHutang = (float) $transaksiDo->bayar_hutang;
 
-                // Notifikasi sukses
+                // Hitung sisa hutang
+                $sisaHutang = $hutangAwal - $bayarHutang;
+
+                // Update penjual dengan sisa hutang
+                $penjual->update([
+                    'hutang' => $sisaHutang
+                ]);
+
+                // Update transaksi
+                $transaksiDo->update([
+                    'hutang' => $hutangAwal,
+                    'sisa_hutang' => $sisaHutang
+                ]);
+
                 Notification::make()
-                    ->title('Hutang penjual berhasil diupdate')
+                    ->title('Hutang Penjual Diperbarui')
+                    ->body(
+                        "Hutang awal: Rp " . number_format($hutangAwal, 0, ',', '.') . "\n" .
+                            "Dibayar: Rp " . number_format($bayarHutang, 0, ',', '.') . "\n" .
+                            "Sisa hutang: Rp " . number_format($sisaHutang, 0, ',', '.')
+                    )
                     ->success()
                     ->send();
             }
         }
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

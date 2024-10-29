@@ -19,7 +19,7 @@ class PerusahaanResource extends Resource
 {
     protected static ?string $model = Perusahaan::class;
 
-    protected static ?string $navigationGroup = 'Master Data';
+    // protected static ?string $navigationGroup = 'Master Data';
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 3;
 
@@ -70,7 +70,7 @@ class PerusahaanResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('pimpinan')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('kasir_id')
+                Tables\Columns\TextColumn::make('user.name')
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')

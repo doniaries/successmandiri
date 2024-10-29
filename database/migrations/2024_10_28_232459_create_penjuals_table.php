@@ -16,10 +16,7 @@ return new class extends Migration
             $table->string('nama');
             $table->string('alamat')->nullable();
             $table->string('telepon')->nullable();
-            $table->decimal('saldo', 10, 0)->nullable();
-            $table->decimal('hutang', 10, 0)->nullable();
-            // $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            // $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->decimal('hutang', 15, 0)->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

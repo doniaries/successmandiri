@@ -46,7 +46,7 @@ class TransaksiDo extends Model
         'harga_satuan' => 'decimal:0',
         'total' => 'decimal:0',
         'upah_bongkar' => 'decimal:0',
-        'hutang' => 'decimal:0', // Cast sebagai decimal
+        'hutang' => 'decimal:0',
         'bayar_hutang' => 'decimal:0',
         'sisa_bayar' => 'decimal:0',
     ];

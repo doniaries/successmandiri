@@ -7,6 +7,7 @@ use Filament\Tables;
 use App\Models\Penjual;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
+use Filament\Support\RawJs;
 use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\PenjualResource\Pages;
@@ -17,23 +18,10 @@ class PenjualResource extends Resource
 {
     protected static ?string $model = Penjual::class;
 
-    protected static ?string $navigationGroup = 'Master Data';
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
-    protected static ?int $navigationSort = 2;
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'warning';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function form(Form $form): Form
     {
-
         return $form
             ->schema([
                 Forms\Components\TextInput::make('nama')
@@ -44,14 +32,12 @@ class PenjualResource extends Resource
                 Forms\Components\TextInput::make('telepon')
                     ->tel()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('saldo')
-                    ->numeric(),
                 Forms\Components\TextInput::make('hutang')
+                    ->prefix('Rp ')
+                    ->mask(RawJs::make('$money($input)')) //pemisah titik pada angka
+                    ->stripCharacters(',') //koma pada angka
                     ->numeric(),
-                // Forms\Components\TextInput::make('created_by')
-                //     ->numeric(),
-                // Forms\Components\TextInput::make('updated_by')
-                //     ->numeric(),
+
             ]);
     }
 
@@ -65,18 +51,10 @@ class PenjualResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('telepon')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('saldo')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('hutang')
-                    ->numeric()
-                    ->sortable(),
-                // Tables\Columns\TextColumn::make('created_by')
-                //     ->numeric()
-                //     ->sortable(),
-                // Tables\Columns\TextColumn::make('updated_by')
-                //     ->numeric()
-                //     ->sortable(),
+                    ->money('IDR')
+                    ->prefix('Rp '),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -90,15 +68,11 @@ class PenjualResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->emptyStateHeading('Tidak ada penjual')
-            ->emptyStateIcon('heroicon-o-question-mark-circle')
-            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -123,5 +97,13 @@ class PenjualResource extends Resource
             'create' => Pages\CreatePenjual::route('/create'),
             'edit' => Pages\EditPenjual::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 }
