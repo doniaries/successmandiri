@@ -33,12 +33,27 @@ class TransaksiDo extends Model
     ];
 
     protected $dates = [
-        'deleted_at',
+        'tanggal',
+        'created_at',
+        'updated_at',
+        'deleted_at'
+
+    ];
+
+    protected $casts = [
+        'tanggal' => 'datetime',
+        'tonase' => 'decimal:0',
+        'harga_satuan' => 'decimal:0',
+        'total' => 'decimal:0',
+        'upah_bongkar' => 'decimal:0',
+        'hutang' => 'decimal:0', // Cast sebagai decimal
+        'bayar_hutang' => 'decimal:0',
+        'sisa_bayar' => 'decimal:0',
     ];
 
     public function penjual()
     {
-        return $this->belongsTo(Penjual::class);
+        return $this->belongsTo(Penjual::class, 'penjual_id');
     }
 
     public function pekerja()

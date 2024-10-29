@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('transaksi_do', function (Blueprint $table) {
             $table->id();
             $table->string('nomor')->unique();
-            $table->date('tanggal');
+            $table->dateTime('tanggal');
             $table->foreignId('penjual_id')
                 ->constrained('penjuals')
                 ->onDelete('restrict');

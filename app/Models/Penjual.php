@@ -17,4 +17,9 @@ class Penjual extends Model
         'saldo',
         'hutang',
     ];
+
+    // Optional: tambahkan casting
+    protected $casts = [
+        'hutang' => 'decimal:0',
+    ];
 }

@@ -26,7 +26,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             // ->sidebarCollapsibleOnDesktop()
             ->spa() //single page application
-            // ->topNavigation(true)
+            ->topNavigation(true)
             ->maxContentWidth('full')
             ->id('admin')
             ->path('admin')
