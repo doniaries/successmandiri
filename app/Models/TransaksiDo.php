@@ -23,11 +23,11 @@ class TransaksiDo extends Model
         'upah_bongkar',
         'hutang',
         'bayar_hutang',
+        'sisa_hutang', // tambahkan ini
         'sisa_bayar',
         'file_do',
         'cara_bayar',
         'catatan',
-        'deleted_at',
         // 'created_by',
         // 'updated_by',
     ];
@@ -41,25 +41,15 @@ class TransaksiDo extends Model
     ];
 
     protected $casts = [
-        // 'tanggal' => 'datetime',
-        // 'tonase' => 'decimal:0',
-        'hutang' => 'decimal:0',
-        'harga_satuan' => 'decimal:0',
-        'total' => 'decimal:0',
-        'upah_bongkar' => 'decimal:0',
-        'hutang' => 'decimal:0',
-        'bayar_hutang' => 'decimal:0',
-        'sisa_bayar' => 'decimal:0',
-        'hutang' => 'integer',
         'tanggal' => 'datetime',
-        'tonase' => 'integer',          // Ubah ke integer
-        'harga_satuan' => 'integer',    // Ubah ke integer
-        'total' => 'integer',           // Ubah ke integer
-        'upah_bongkar' => 'integer',    // Ubah ke integer
-        'hutang' => 'integer',          // Ubah ke integer
-        'bayar_hutang' => 'integer',    // Ubah ke integer
-        'sisa_hutang' => 'integer',     // Ubah ke integer
-        'sisa_bayar' => 'integer',      // Ubah ke integer
+        'tonase' => 'integer',
+        'harga_satuan' => 'integer',
+        'total' => 'integer',
+        'upah_bongkar' => 'integer',
+        'hutang' => 'integer',
+        'bayar_hutang' => 'integer',
+        'sisa_hutang' => 'integer',
+        'sisa_bayar' => 'integer',
     ];
 
     public function penjual()

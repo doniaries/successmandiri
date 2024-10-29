@@ -37,15 +37,6 @@ class PenjualResource extends Resource
                 Forms\Components\TextInput::make('hutang')
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2),
 
-                // ->afterStateUpdated(function (string $state, callable $set) {
-                //     // Format for display (optional)
-                //     $formattedValue = 'Rp' . number_format($state, 0, ',', '.');
-                //     $set('formatted_hutang', $formattedValue); // Store formatted value in a separate field
-
-                //     // Store raw value in the database
-                //     $set('hutang', str_replace(['Rp', '.', ','], '', $state));
-                // }),
-
             ]);
     }
 
@@ -61,9 +52,9 @@ class PenjualResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('hutang')
                     ->label('Hutang')
-                    // ->currency('IDR')
                     ->money('IDR')
                     ->sortable(),
+
 
 
                 Tables\Columns\TextColumn::make('created_at')

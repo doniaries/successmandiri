@@ -686,7 +686,7 @@ return [
         'IDR' => [
             'name'                => 'Rupiah',
             'code'                => 360,
-            'precision'           => 2,
+            'precision'           => 0,
             'subunit'             => 100,
             'symbol'              => 'Rp',
             'symbol_first'        => true,
@@ -1673,7 +1673,7 @@ return [
             'decimal_mark'        => ',',
             'thousands_separator' => '.',
         ],
-        
+
         'VED' => [
             'name'                => 'Dijital Bolívar',
             'code'                => 926,
