@@ -4,23 +4,21 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PinjamResource\Pages;
 use App\Models\Pinjam;
+use App\Models\Pekerja;
+use App\Models\Penjual;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Support\Colors\Color;
 
 class PinjamResource extends Resource
 {
     protected static ?string $model = Pinjam::class;
 
-    // Label dalam Bahasa Indonesia
     protected static ?string $navigationLabel = 'Peminjaman';
     protected static ?string $modelLabel = 'Data Pinjaman';
-    protected static ?string $pluralModelLabel = 'Data Peminjaman';
     protected static ?string $navigationGroup = 'Operasional';
-    protected static ?int $navigationSort = 1;
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
 
     public static function form(Form $form): Form
@@ -43,24 +41,38 @@ class PinjamResource extends Resource
                                 Forms\Components\Select::make('kategori_peminjam')
                                     ->label('Kategori Peminjam')
                                     ->options([
-                                        'karyawan' => 'Karyawan',
-                                        'nasabah' => 'Nasabah',
-                                        'umum' => 'Umum',
+                                        'Penjual' => 'Penjual',
+                                        'Pekerja' => 'Pekerja',
                                     ])
                                     ->required()
+                                    ->live()
                                     ->native(false)
+                                    ->afterStateUpdated(fn(Forms\Set $set) => $set('peminjam_id', null))
                                     ->columnSpan(1),
-                            ]),
 
-                        Forms\Components\Section::make('Detail Pinjaman')
-                            ->description('Masukkan detail nominal dan identitas peminjam')
-                            ->icon('heroicon-o-currency-dollar')
-                            ->columns(2)
-                            ->schema([
-                                Forms\Components\TextInput::make('peminjam_id')
-                                    ->label('ID Peminjam')
+                                Forms\Components\Select::make('peminjam_id')
+                                    ->label('Nama Peminjam')
                                     ->required()
-                                    ->numeric()
+                                    ->native(false)
+                                    ->options(function (Forms\Get $get) {
+                                        $kategori = $get('kategori_peminjam');
+
+                                        if (!$kategori) {
+                                            return [];
+                                        }
+
+                                        return match ($kategori) {
+                                            'Pekerja' => Pekerja::query()
+                                                ->active()
+                                                ->pluck('nama', 'id')
+                                                ->toArray(),
+                                            'Penjual' => Penjual::query()
+                                                ->whereNull('deleted_at')
+                                                ->pluck('nama', 'id')
+                                                ->toArray(),
+                                            default => [],
+                                        };
+                                    })
                                     ->columnSpan(1),
 
                                 Forms\Components\TextInput::make('nominal')
@@ -72,12 +84,10 @@ class PinjamResource extends Resource
                                     ->columnSpan(1),
                             ]),
 
-                        Forms\Components\Section::make('Keterangan Tambahan')
-                            ->description('Informasi tambahan terkait peminjaman')
-                            ->icon('heroicon-o-document-text')
+                        Forms\Components\Section::make('Keterangan')
                             ->schema([
                                 Forms\Components\Textarea::make('deskripsi')
-                                    ->label('Keterangan')
+                                    ->label('Keterangan Pinjaman')
                                     ->maxLength(255)
                                     ->rows(3)
                                     ->columnSpanFull(),

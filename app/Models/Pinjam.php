@@ -16,4 +16,10 @@ class Pinjam extends Model
         'nominal',
         'deskripsi',
     ];
+
+
+    public function peminjam()
+    {
+        return $this->morphTo('peminjam', 'kategori_peminjam', 'peminjam_id');
+    }
 }
