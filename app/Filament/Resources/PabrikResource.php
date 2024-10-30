@@ -18,8 +18,8 @@ class PabrikResource extends Resource
     protected static ?string $model = Pabrik::class;
 
     protected static ?string $navigationGroup = 'Master Data';
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?int $navigationSort = 4;
+    protected static ?string $navigationIcon = 'heroicon-o-building-office';
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {

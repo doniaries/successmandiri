@@ -19,7 +19,7 @@ class PerusahaanResource extends Resource
 {
     protected static ?string $model = Perusahaan::class;
 
-    // protected static ?string $navigationGroup = 'Master Data';
+    protected static ?string $navigationGroup = 'Master Data';
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
     protected static ?int $navigationSort = 3;
 

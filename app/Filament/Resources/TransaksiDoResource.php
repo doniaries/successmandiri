@@ -10,10 +10,12 @@ use Filament\Tables\Table;
 use App\Models\TransaksiDo;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
+use Filament\Tables\Columns\ColorColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\TransaksiDoResource\Pages;
-use Filament\Tables\Columns\ColorColumn;
+use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDOWidget;
+use Filament\Tables\Columns\Summarizers\Count;
 
 class TransaksiDoResource extends Resource
 {
@@ -24,12 +26,18 @@ class TransaksiDoResource extends Resource
     protected static ?string $pluralModelLabel = 'Transaksi DO';
     protected static ?int $navigationSort = 1;
 
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
     public static function form(Form $form): Form
     {
         return $form->schema([
             // Header Section - Informasi Utama
             Forms\Components\Section::make()
                 ->schema([
+
                     Forms\Components\Grid::make()
                         ->schema([
                             Forms\Components\TextInput::make('nomor')
@@ -44,7 +52,7 @@ class TransaksiDoResource extends Resource
                                 ->timezone('Asia/Jakarta')
                                 ->displayFormat('d/m/Y H:i')
                                 ->default(now())
-                                ->disabled()
+                                // ->disabled()
                                 ->required()
                                 ->dehydrated(),
 
@@ -255,6 +263,10 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('tonase')
                     ->label('Tonase')
                     ->suffix(' Kg')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->suffix(' Kg')
+                    ])
                     ->numeric()
                     ->sortable(),
 
@@ -268,11 +280,19 @@ class TransaksiDoResource extends Resource
                     ->money('IDR')
                     ->color(Color::Emerald)
                     ->weight('bold')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('upah_bongkar')
                     ->label('Upah Bongkar')
                     ->money('IDR')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('hutang')
@@ -284,6 +304,10 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('bayar_hutang')
                     ->label('Bayar Hutang')
                     ->money('IDR')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
                     ->color(Color::Orange)
                     ->sortable(),
 
@@ -297,6 +321,10 @@ class TransaksiDoResource extends Resource
                     ->money('IDR')
                     ->color(Color::Emerald)
                     ->weight('bold')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('cara_bayar')
@@ -333,6 +361,8 @@ class TransaksiDoResource extends Resource
                 // ]),
             ]);
     }
+
+
 
     // Helper methods untuk kalkulasi
     private static function hitungTotal($state, Forms\Get $get, Forms\Set $set): void
