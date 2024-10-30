@@ -13,14 +13,12 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-use Pelmered\FilamentMoneyField\Forms\Components\MoneyInput;
-use Pelmered\FilamentMoneyField\Tables\Columns\MoneyColumn;
 
 class PekerjaResource extends Resource
 {
     protected static ?string $model = Pekerja::class;
 
-    protected static ?string $navigationGroup = 'Master Data';
+    // protected static ?string $navigationGroup = 'Master Data';
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?int $navigationSort = 4;
 
@@ -36,13 +34,15 @@ class PekerjaResource extends Resource
                 Forms\Components\TextInput::make('telepon')
                     ->tel()
                     ->maxLength(255),
-                MoneyInput::make('pendapatan')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                Forms\Components\TextInput::make('pendapatan')
+                    // ->disabled()
+                    ->prefix('Rp. ')
+                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                     ->default(0),
-                MoneyInput::make('hutang')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                Forms\Components\TextInput::make('hutang')
+                    // ->disabled()
+                    ->prefix('Rp. ')
+                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                     ->default(0),
                 // Forms\Components\TextInput::make('created_by')
                 //     ->numeric(),
@@ -61,20 +61,13 @@ class PekerjaResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('telepon')
                     ->searchable(),
-                MoneyColumn::make('pendapatan')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                Tables\Columns\TextColumn::make('pendapatan')
+                    ->money('IDR')
                     ->sortable(),
-                MoneyColumn::make('hutang')
-                    ->currency('IDR')
-                    ->locale('id_ID')
+                Tables\Columns\TextColumn::make('hutang')
+                    ->money('IDR')
                     ->sortable(),
-                // Tables\Columns\TextColumn::make('created_by')
-                //     ->numeric()
-                //     ->sortable(),
-                // Tables\Columns\TextColumn::make('updated_by')
-                //     ->numeric()
-                //     ->sortable(),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -137,6 +130,6 @@ class PekerjaResource extends Resource
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return 'primary';
+        return 'warning';
     }
 }

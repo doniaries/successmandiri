@@ -18,27 +18,23 @@ class Pinjam extends Model
         'deskripsi',
     ];
 
-    // Relasi ke Pekerja
     public function pekerja(): BelongsTo
     {
-        return $this->belongsTo(Pekerja::class, 'peminjam_id')
-            ->where('kategori_peminjam', 'Pekerja');
+        return $this->belongsTo(Pekerja::class, 'peminjam_id');
     }
 
-    // Relasi ke Penjual
     public function penjual(): BelongsTo
     {
-        return $this->belongsTo(Penjual::class, 'peminjam_id')
-            ->where('kategori_peminjam', 'Penjual');
+        return $this->belongsTo(Penjual::class, 'peminjam_id');
     }
 
-    // Method untuk mendapatkan data peminjam
-    public function getPeminjam()
+    // Helper method untuk mendapatkan nama peminjam
+    public function getNamaPeminjamAttribute()
     {
         return match ($this->kategori_peminjam) {
-            'Pekerja' => $this->pekerja,
-            'Penjual' => $this->penjual,
-            default => null,
+            'Pekerja' => $this->pekerja?->nama,
+            'Penjual' => $this->penjual?->nama,
+            default => null
         };
     }
 }

@@ -85,11 +85,17 @@ class PinjamResource extends Resource
                                 TextInput::make('nominal')
                                     ->label('Nominal Pinjaman')
                                     ->required()
+                                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                     ->numeric()
                                     ->prefix('Rp')
                                     ->inputMode('decimal')
                                     ->step('0.01')
                                     ->columnSpan(1),
+                                Textarea::make('deskripsi')
+                                    ->label('Keterangan Pinjaman')
+                                    ->maxLength(255)
+                                    ->rows(3)
+                                    ->columnSpan(2),
                             ]),
 
                         Section::make('Informasi Peminjam')
@@ -130,6 +136,23 @@ class PinjamResource extends Resource
                                         return $peminjam?->alamat ?? '-';
                                     }),
 
+                                Placeholder::make('telepon')
+                                    ->label('No Telp/HP')
+                                    ->content(function (Forms\Get $get) {
+                                        $kategori = $get('kategori_peminjam');
+                                        $peminjamId = $get('peminjam_id');
+
+                                        if (!$kategori || !$peminjamId) return '-';
+
+                                        $peminjam = match ($kategori) {
+                                            'Pekerja' => Pekerja::find($peminjamId),
+                                            'Penjual' => Penjual::find($peminjamId),
+                                            default => null,
+                                        };
+
+                                        return $peminjam?->telepon ?? '-';
+                                    }),
+
                                 Placeholder::make('hutang')
                                     ->label('Total Hutang')
                                     ->content(function (Forms\Get $get) {
@@ -146,7 +169,7 @@ class PinjamResource extends Resource
 
                                         if (!$peminjam) return '-';
 
-                                        return number_format($peminjam->hutang, 0, ',', '.');
+                                        return 'Rp. ' . number_format($peminjam->hutang, 0, ',', '.',);
                                     }),
                             ])
                             ->columns(2)
@@ -156,14 +179,6 @@ class PinjamResource extends Resource
                                     !$get('peminjam_id')
                             ),
 
-                        Section::make('Keterangan')
-                            ->schema([
-                                Textarea::make('deskripsi')
-                                    ->label('Keterangan Pinjaman')
-                                    ->maxLength(255)
-                                    ->rows(3)
-                                    ->columnSpanFull(),
-                            ]),
                     ]),
             ]);
     }
@@ -186,10 +201,27 @@ class PinjamResource extends Resource
                         default => 'gray',
                     }),
 
-                TextColumn::make('peminjam.nama')
+                // Menggunakan accessor untuk nama peminjam
+                TextColumn::make('nama_peminjam')
                     ->label('Nama Peminjam')
-                    ->sortable()
-                    ->searchable(),
+                    ->searchable(query: function ($query, string $search): void {
+                        $query->where(function ($query) use ($search) {
+                            $query->whereHas('pekerja', function ($query) use ($search) {
+                                $query->where('nama', 'like', "%{$search}%");
+                            })
+                                ->orWhereHas('penjual', function ($query) use ($search) {
+                                    $query->where('nama', 'like', "%{$search}%");
+                                });
+                        });
+                    })
+                    ->sortable(query: function ($query, string $direction): void {
+                        $query->orderBy(function ($query) {
+                            $query->selectRaw('COALESCE(
+                                (SELECT nama FROM pekerjas WHERE pekerjas.id = pinjams.peminjam_id AND pinjams.kategori_peminjam = "Pekerja"),
+                                (SELECT nama FROM penjuals WHERE penjuals.id = pinjams.peminjam_id AND pinjams.kategori_peminjam = "Penjual")
+                            )');
+                        }, $direction);
+                    }),
 
                 TextColumn::make('nominal')
                     ->label('Nominal')
@@ -205,6 +237,13 @@ class PinjamResource extends Resource
                     ->limit(30)
                     ->searchable()
                     ->toggleable(),
+
+                TextColumn::make('created_at')
+                    ->label('Dibuat')
+                    ->dateTime('d M Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
