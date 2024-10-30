@@ -16,6 +16,7 @@ class TransaksiTerakhir extends BaseWidget
     protected int|string|null $defaultTableRecordsPerPageSelectOption = 5;
     protected int | string | array $columnSpan = 'full';
 
+
     public function table(Table $table): Table
     {
         return $table
