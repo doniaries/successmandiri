@@ -17,7 +17,9 @@ use App\Filament\Resources\TransaksiDoResource\Pages;
 class TransaksiDoResource extends Resource
 {
     protected static ?string $model = TransaksiDo::class;
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+
+
 
     public static function getNavigationBadge(): ?string
     {
@@ -26,7 +28,7 @@ class TransaksiDoResource extends Resource
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return 'primary';
+        return 'info';
     }
 
     public static function form(Form $form): Form
@@ -315,5 +317,32 @@ class TransaksiDoResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        // Hitung sisa hutang
+        $hutang = (int)str_replace(['.', ','], ['', '.'], $data['hutang'] ?? 0);
+        $bayarHutang = (int)str_replace(['.', ','], ['', '.'], $data['bayar_hutang'] ?? 0);
+        $data['sisa_hutang'] = $hutang - $bayarHutang;
+
+        // Format angka lainnya
+        $numericFields = [
+            'tonase',
+            'harga_satuan',
+            'total',
+            'upah_bongkar',
+            'hutang',
+            'bayar_hutang',
+            'sisa_bayar'
+        ];
+
+        foreach ($numericFields as $field) {
+            if (isset($data[$field])) {
+                $data[$field] = (int)str_replace(['.', ','], ['', '.'], $data[$field]);
+            }
+        }
+
+        return $data;
     }
 }

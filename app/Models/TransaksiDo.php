@@ -52,6 +52,11 @@ class TransaksiDo extends Model
         'sisa_bayar' => 'integer',
     ];
 
+    protected $attributes = [
+        'sisa_hutang' => 0,
+    ];
+
+
     public function penjual()
     {
         return $this->belongsTo(Penjual::class, 'penjual_id');
