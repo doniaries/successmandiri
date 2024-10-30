@@ -62,10 +62,10 @@ class PenjualResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('hutang')
                     ->label('Hutang')
+                    ->alignCenter()
                     ->badge()
                     ->money('IDR')
                     ->sortable(),
-
 
 
                 Tables\Columns\TextColumn::make('created_at')

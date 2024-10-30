@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\GenerateMonthlyNumber;
 
 class TransaksiDo extends Model
 {
 
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, GenerateMonthlyNumber;
     protected $table = 'transaksi_do';
 
     protected $fillable = [

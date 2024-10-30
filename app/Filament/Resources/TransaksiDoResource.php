@@ -34,7 +34,8 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('nomor')
                                 ->label('Nomor DO')
-                                ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
+                                // ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
+                                ->default(fn() => TransaksiDo::generateMonthlyNumber())
                                 ->disabled()
                                 ->dehydrated(),
 
@@ -43,23 +44,30 @@ class TransaksiDoResource extends Resource
                                 ->timezone('Asia/Jakarta')
                                 ->displayFormat('d/m/Y H:i')
                                 ->default(now())
+                                ->disabled()
                                 ->required()
                                 ->dehydrated(),
 
                             Forms\Components\Select::make('penjual_id')
                                 ->label('Penjual')
+                                ->placeholder('Pilih Nama Penjual')
                                 ->relationship('penjual', 'nama')
                                 ->searchable()
                                 ->preload()
+                                ->hint('Tambahkan Penjual Baru')
+                                ->hintIcon('heroicon-m-arrow-down-circle')
+                                ->hintColor('primary')
                                 ->createOptionForm([
                                     Forms\Components\TextInput::make('nama')
+                                        ->required()
                                         ->label('Nama'),
                                     Forms\Components\TextInput::make('alamat')
+                                        ->required()
                                         ->label('Alamat'),
                                     Forms\Components\TextInput::make('telepon')
+                                        ->required()
                                         ->label('Telepon/HP'),
                                 ])
-
                                 ->live()
                                 ->afterStateUpdated(function ($state, Forms\Set $set) {
                                     if ($state) {
@@ -97,10 +105,11 @@ class TransaksiDoResource extends Resource
 
                                     Forms\Components\TextInput::make('harga_satuan')
                                         ->label('Harga Satuan')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->required()
                                         ->prefix('Rp')
                                         ->numeric()
+
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungTotal($state, $get, $set)),
@@ -114,7 +123,7 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('total')
                                 ->label('Sub Total')
-                                ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                 ->prefix('Rp')
                                 ->disabled()
                                 ->dehydrated(),
@@ -145,7 +154,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Bayar Hutang')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->required()
+                                        // ->required()
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungPembayaranHutang($state, $get, $set)),
@@ -222,13 +231,17 @@ class TransaksiDoResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->copyable()
+                    ->copyMessage('no DO telah disalin')
+                    ->copyMessageDuration(1500)
                     ->badge()
                     ->color(Color::Blue),
 
                 Tables\Columns\TextColumn::make('tanggal')
                     ->label('Tanggal')
+                    ->badge()
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+
 
                 Tables\Columns\TextColumn::make('penjual.nama')
                     ->label('Penjual')
@@ -271,6 +284,7 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('bayar_hutang')
                     ->label('Bayar Hutang')
                     ->money('IDR')
+                    ->color(Color::Orange)
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('sisa_hutang')
@@ -309,11 +323,14 @@ class TransaksiDoResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\ForceDeleteBulkAction::make(),
+                Tables\Actions\RestoreBulkAction::make(),
+                // Tables\Actions\BulkActionGroup::make([
+                //     Tables\Actions\DeleteBulkAction::make(),
+                //     Tables\Actions\ForceDeleteBulkAction::make(),
+                //     Tables\Actions\RestoreBulkAction::make(),
+                // ]),
             ]);
     }
 
