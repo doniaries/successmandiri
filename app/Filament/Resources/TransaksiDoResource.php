@@ -10,193 +10,198 @@ use Filament\Tables\Table;
 use App\Models\TransaksiDo;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
-use Ariaieboy\FilamentCurrency\Forms\Components\CurrencyInput;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\TransaksiDoResource\Pages;
+use Filament\Tables\Columns\ColorColumn;
 
 class TransaksiDoResource extends Resource
 {
     protected static ?string $model = TransaksiDo::class;
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
-
-
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'info';
-    }
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationLabel = 'Transaksi DO';
+    protected static ?string $modelLabel = 'Transaksi DO';
+    protected static ?string $pluralModelLabel = 'Transaksi DO';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('nomor')
-                    ->label('Nomor DO')
-                    ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
-                    ->disabled()
-                    ->dehydrated(),
+        return $form->schema([
+            // Header Section - Informasi Utama
+            Forms\Components\Section::make()
+                ->schema([
+                    Forms\Components\Grid::make()
+                        ->schema([
+                            Forms\Components\TextInput::make('nomor')
+                                ->label('Nomor DO')
+                                ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
+                                ->disabled()
+                                ->dehydrated(),
 
-                Forms\Components\DateTimePicker::make('tanggal')
-                    ->label('Tanggal')
-                    ->displayFormat('d/m/Y H:i')
-                    ->timezone('Asia/Jakarta')
-                    ->default(now())
-                    ->required(),
+                            Forms\Components\DateTimePicker::make('tanggal')
+                                ->label('Tanggal')
+                                ->timezone('Asia/Jakarta')
+                                ->displayFormat('d/m/Y H:i')
+                                ->default(now())
+                                ->required()
+                                ->dehydrated(),
 
-                Forms\Components\Select::make('penjual_id')
-                    ->label('Penjual')
-                    ->relationship('penjual', 'nama')
-                    ->searchable()
-                    ->preload()
-                    ->live()
-                    ->required()
-                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        if (!$state) {
-                            $set('hutang', 0);
-                            return;
-                        }
+                            Forms\Components\Select::make('penjual_id')
+                                ->label('Penjual')
+                                ->relationship('penjual', 'nama')
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                    if ($state) {
+                                        $hutang = Penjual::find($state)?->hutang ?? 0;
+                                        $set('hutang', $hutang);
+                                    } else {
+                                        $set('hutang', 0);
+                                    }
+                                })
+                                ->required(),
 
-                        $penjual = Penjual::find($state);
-                        if ($penjual) {
-                            $set('hutang', $penjual->hutang);
-                            $total = (int) $get('total');
-                            $upahBongkar = (int) $get('upah_bongkar') ?? 0;
-                            $sisaBayar = $total - $upahBongkar - $penjual->hutang;
-                            $set('sisa_bayar', $sisaBayar);
-                        }
-                    }),
+                            Forms\Components\TextInput::make('nomor_polisi')
+                                ->label('Nomor Polisi'),
+                        ])
+                        ->columns(2),
+                ])
+                ->columnSpanFull(),
 
-                Forms\Components\TextInput::make('nomor_polisi')
-                    ->label('Nomor Polisi')
-                    ->placeholder('Masukkan Nomor Polisi'),
+            // Detail Pengiriman Section
+            Forms\Components\Grid::make()
+                ->schema([
+                    // Panel Kiri
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\Grid::make()
+                                ->schema([
+                                    Forms\Components\TextInput::make('tonase')
+                                        ->label('Tonase')
+                                        ->required()
+                                        ->numeric()
+                                        ->suffix('Kg')
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
+                                        static::hitungTotal($state, $get, $set)),
 
-                Forms\Components\TextInput::make('tonase')
-                    ->label('Tonase')
-                    ->live(onBlur: true)
-                    ->required()
-                    ->numeric()
-                    ->suffix('Kg')
-                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        if ($state && $get('harga_satuan')) {
-                            $total = (int)$state * (int)$get('harga_satuan');
-                            $set('total', $total);
+                                    Forms\Components\TextInput::make('harga_satuan')
+                                        ->label('Harga Satuan')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->required()
+                                        ->prefix('Rp')
+                                        ->numeric()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
+                                        static::hitungTotal($state, $get, $set)),
+                                ])
+                                ->columns(2),
+                        ])
+                        ->columnSpan(2),
 
-                            $upahBongkar = (int)$get('upah_bongkar') ?? 0;
-                            $hutang = (int)$get('hutang') ?? 0;
-                            $sisaBayar = $total - $upahBongkar - $hutang;
-                            $set('sisa_bayar', $sisaBayar);
-                        }
-                    }),
+                    // Panel Kanan
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\TextInput::make('total')
+                                ->label('Sub Total')
+                                ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                ->prefix('Rp')
+                                ->disabled()
+                                ->dehydrated(),
+                        ])
+                        ->columnSpan(1),
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
 
-                Forms\Components\TextInput::make('harga_satuan')
-                    ->label('Harga Satuan')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->live(onBlur: true)
-                    ->numeric()
-                    ->required()
-                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        if ($state && $get('tonase')) {
-                            $total = (int)$get('tonase') * (int)$state;
-                            $set('total', $total);
+            // Perhitungan & Pembayaran Section
+            Forms\Components\Grid::make()
+                ->schema([
+                    // Panel Kiri - Detail Pembayaran
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\Grid::make()
+                                ->schema([
+                                    Forms\Components\TextInput::make('upah_bongkar')
+                                        ->label('Upah Bongkar')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->prefix('Rp')
+                                        ->required()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
+                                        static::hitungSisaBayar($state, $get, $set)),
 
-                            $upahBongkar = (int)$get('upah_bongkar') ?? 0;
-                            $hutang = (int)$get('hutang') ?? 0;
-                            $sisaBayar = $total - $upahBongkar - $hutang;
-                            $set('sisa_bayar', $sisaBayar);
-                        }
-                    }),
+                                    Forms\Components\TextInput::make('bayar_hutang')
+                                        ->label('Bayar Hutang')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->prefix('Rp')
+                                        ->required()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
+                                        static::hitungPembayaranHutang($state, $get, $set)),
+                                    Forms\Components\Select::make('cara_bayar')
+                                        ->label('Metode Pembayaran')
+                                        ->options([
+                                            'Tunai' => 'Tunai',
+                                            'Transfer' => 'Transfer',
+                                        ])
+                                        ->default('Tunai')
+                                        ->required(),
+                                    Forms\Components\TextInput::make('catatan')
+                                        ->label('Catatan'),
+                                    Forms\Components\FileUpload::make('file_do')
+                                        ->label('Upload File DO')
+                                        ->directory('do-files')
+                                        ->preserveFilenames()
+                                        ->acceptedFileTypes(['application/pdf', 'image/*'])
+                                        ->maxSize(5120),
 
-                Forms\Components\TextInput::make('total')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->label('Total')
-                    ->disabled()
-                    ->dehydrated(true),
 
-                Forms\Components\TextInput::make('upah_bongkar')
-                    ->label('Upah Bongkar')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->required()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        $total = (int)$get('total') ?? 0;
-                        $hutang = (int)$get('hutang') ?? 0;
-                        $sisaBayar = $total - (int)$state - $hutang;
-                        $set('sisa_bayar', $sisaBayar);
-                    }),
+                                ])
+                                ->columns(2),
+                        ])
+                        ->columnSpan(2),
 
-                Forms\Components\TextInput::make('hutang')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->label('Hutang')
-                    ->disabled()
-                    ->dehydrated(true),
+                    // Panel Kanan - Informasi Hutang & Sisa
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\Grid::make()
+                                ->schema([
+                                    Forms\Components\TextInput::make('hutang')
+                                        ->label('Total Hutang')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->prefix('Rp')
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->numeric()
+                                        ->default(0),
 
-                Forms\Components\TextInput::make('bayar_hutang')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->label('Bayar Hutang')
-                    ->required()
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                        $hutang = (int)$get('hutang') ?? 0;
-                        $total = (int)$get('total') ?? 0;
-                        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
+                                    Forms\Components\TextInput::make('sisa_hutang')
+                                        ->label('Sisa Hutang')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->prefix('Rp')
+                                        ->disabled()
+                                        ->dehydrated(),
 
-                        // Validasi pembayaran tidak melebihi hutang
-                        if ((int)$state > $hutang) {
-                            $set('bayar_hutang', $hutang);
-                            $state = $hutang;
-                        }
+                                    Forms\Components\TextInput::make('sisa_bayar')
+                                        ->label('Sisa Bayar')
+                                        ->prefix('Rp')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->disabled()
+                                        ->dehydrated(),
 
-                        $sisaHutang = $hutang - (int)$state;
-                        $set('sisa_hutang', $sisaHutang);
 
-                        $sisaBayar = $total - $upahBongkar - (int)$state;
-                        $set('sisa_bayar', $sisaBayar);
-                    }),
+                                ])
+                                ->columns(1),
+                        ])
+                        ->columnSpan(1),
+                ])
+                ->columns(3)
+                ->columnSpanFull(),
 
-                Forms\Components\TextInput::make('sisa_hutang')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->label('Sisa Hutang')
-                    ->disabled()
-                    ->dehydrated(true),
 
-                Forms\Components\TextInput::make('sisa_bayar')
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                    ->prefix('Rp')
-                    ->label('Sisa Bayar')
-                    ->disabled()
-                    ->dehydrated(),
-
-                Forms\Components\FileUpload::make('file_do')
-                    ->label('File DO')
-                    ->directory('do-files')
-                    ->preserveFilenames()
-                    ->acceptedFileTypes(['application/pdf', 'image/*'])
-                    ->maxSize(5120),
-
-                Forms\Components\Select::make('cara_bayar')
-                    ->label('Cara Bayar')
-                    ->options([
-                        'Tunai' => 'Tunai',
-                        'Transfer' => 'Transfer',
-                    ])
-                    ->default('Tunai')
-                    ->required(),
-
-                Forms\Components\Textarea::make('catatan')
-                    ->label('Catatan')
-                    ->columnSpanFull(),
-            ]);
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -205,10 +210,11 @@ class TransaksiDoResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('nomor')
                     ->label('Nomor')
-                    ->badge()
+                    ->searchable()
+                    ->sortable()
                     ->copyable()
-                    ->color(Color::Blue)
-                    ->searchable(),
+                    ->badge()
+                    ->color(Color::Blue),
 
                 Tables\Columns\TextColumn::make('tanggal')
                     ->label('Tanggal')
@@ -302,6 +308,50 @@ class TransaksiDoResource extends Resource
             ]);
     }
 
+    // Helper methods untuk kalkulasi
+    private static function hitungTotal($state, Forms\Get $get, Forms\Set $set): void
+    {
+        $tonase = (int)$get('tonase');
+        $hargaSatuan = (int)$get('harga_satuan');
+
+        if ($tonase && $hargaSatuan) {
+            $total = $tonase * $hargaSatuan;
+            $set('total', $total);
+
+            $upahBongkar = (int)$get('upah_bongkar') ?? 0;
+            $hutang = (int)$get('hutang') ?? 0;
+            $sisaBayar = $total - $upahBongkar - $hutang;
+            $set('sisa_bayar', $sisaBayar);
+        }
+    }
+
+    private static function hitungSisaBayar($state, Forms\Get $get, Forms\Set $set): void
+    {
+        $total = (int)$get('total') ?? 0;
+        $hutang = (int)$get('hutang') ?? 0;
+        $sisaBayar = $total - (int)$state - $hutang;
+        $set('sisa_bayar', $sisaBayar);
+    }
+
+    private static function hitungPembayaranHutang($state, Forms\Get $get, Forms\Set $set): void
+    {
+        $hutang = (int)$get('hutang') ?? 0;
+        $total = (int)$get('total') ?? 0;
+        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
+
+        // Validasi pembayaran tidak melebihi hutang
+        if ((int)$state > $hutang) {
+            $set('bayar_hutang', $hutang);
+            $state = $hutang;
+        }
+
+        $sisaHutang = $hutang - (int)$state;
+        $set('sisa_hutang', $sisaHutang);
+
+        $sisaBayar = $total - $upahBongkar - (int)$state;
+        $set('sisa_bayar', $sisaBayar);
+    }
+
     public static function getPages(): array
     {
         return [
@@ -311,7 +361,7 @@ class TransaksiDoResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder  // Return type yang benar
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
             ->withoutGlobalScopes([
