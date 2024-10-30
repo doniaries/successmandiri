@@ -51,6 +51,15 @@ class TransaksiDoResource extends Resource
                                 ->relationship('penjual', 'nama')
                                 ->searchable()
                                 ->preload()
+                                ->createOptionForm([
+                                    Forms\Components\TextInput::make('nama')
+                                        ->label('Nama'),
+                                    Forms\Components\TextInput::make('alamat')
+                                        ->label('Alamat'),
+                                    Forms\Components\TextInput::make('telepon')
+                                        ->label('Telepon/HP'),
+                                ])
+
                                 ->live()
                                 ->afterStateUpdated(function ($state, Forms\Set $set) {
                                     if ($state) {
@@ -78,7 +87,7 @@ class TransaksiDoResource extends Resource
                             Forms\Components\Grid::make()
                                 ->schema([
                                     Forms\Components\TextInput::make('tonase')
-                                        ->label('Tonase')
+                                        ->label('Tonase (Netto)')
                                         ->required()
                                         ->numeric()
                                         ->suffix('Kg')
