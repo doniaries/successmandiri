@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Pinjam extends Model
 {
@@ -17,9 +18,27 @@ class Pinjam extends Model
         'deskripsi',
     ];
 
-
-    public function peminjam()
+    // Relasi ke Pekerja
+    public function pekerja(): BelongsTo
     {
-        return $this->morphTo('peminjam', 'kategori_peminjam', 'peminjam_id');
+        return $this->belongsTo(Pekerja::class, 'peminjam_id')
+            ->where('kategori_peminjam', 'Pekerja');
+    }
+
+    // Relasi ke Penjual
+    public function penjual(): BelongsTo
+    {
+        return $this->belongsTo(Penjual::class, 'peminjam_id')
+            ->where('kategori_peminjam', 'Penjual');
+    }
+
+    // Method untuk mendapatkan data peminjam
+    public function getPeminjam()
+    {
+        return match ($this->kategori_peminjam) {
+            'Pekerja' => $this->pekerja,
+            'Penjual' => $this->penjual,
+            default => null,
+        };
     }
 }
