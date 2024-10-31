@@ -49,6 +49,7 @@ class PenjualResource extends Resource
                     ->tel()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('hutang')
+                    ->disabled()
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2),
 
             ]);

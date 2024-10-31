@@ -35,12 +35,12 @@ class PekerjaResource extends Resource
                     ->tel()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('pendapatan')
-                    // ->disabled()
+                    ->disabled()
                     ->prefix('Rp. ')
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                     ->default(0),
                 Forms\Components\TextInput::make('hutang')
-                    // ->disabled()
+                    ->disabled()
                     ->prefix('Rp. ')
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                     ->default(0),
@@ -130,6 +130,6 @@ class PekerjaResource extends Resource
 
     public static function getNavigationBadgeColor(): ?string
     {
-        return 'warning';
+        return 'primary';
     }
 }
