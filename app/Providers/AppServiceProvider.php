@@ -21,9 +21,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
 
-        //---untuk perbaikan agar ngrok jalan
-        if (config('app.env') === 'local') {
-            URL::forceScheme('https');
-        }
+        // //---untuk perbaikan agar ngrok jalan
+        // if (config('app.env') === 'local') {
+        //     URL::forceScheme('https');
+        // }
     }
 }

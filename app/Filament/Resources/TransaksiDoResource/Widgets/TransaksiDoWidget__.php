@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 
-class TransaksiDOWidget extends BaseWidget
+class TransaksiDoWidget extends BaseWidget
 {
 
     protected static ?string $heading = 'Ringkasan Transaksi DO';

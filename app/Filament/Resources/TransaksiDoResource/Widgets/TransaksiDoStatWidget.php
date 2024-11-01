@@ -6,6 +6,7 @@ use App\Models\TransaksiDo;
 use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Carbon\Carbon;
 
 class TransaksiDoStatWidget extends BaseWidget
 {
@@ -27,6 +28,19 @@ class TransaksiDoStatWidget extends BaseWidget
                 SUM(tonase) as total_tonase
             '))
             ->first();
+
+        // Data chart untuk 7 hari terakhir
+        $chartData = TransaksiDo::select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(tonase) as total_tonase'))
+            ->whereBetween('created_at', [Carbon::now()->subDays(7), Carbon::now()])
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->pluck('total_tonase')
+            ->toArray();
+
+        // Hitung total sawit hari ini
+        $totalSawitHariIni = TransaksiDo::whereDate('created_at', Carbon::today())
+            ->sum('tonase');
 
         // Kalkulasi Pemasukan Bulan Ini
         $pemasukanBulanIni = TransaksiDo::whereMonth('created_at', now()->month)
@@ -53,7 +67,16 @@ class TransaksiDoStatWidget extends BaseWidget
             Stat::make('Pemasukan Bulan Ini', 'Rp ' . number_format($pemasukanBulanIni->total_pemasukan ?? 0, 0, ',', '.'))
                 ->description('Total ' . ($pemasukanBulanIni->jumlah_transaksi ?? 0) . ' DO, ' . number_format($pemasukanBulanIni->total_tonase ?? 0, 0, ',', '.') . ' Kg')
                 ->icon('heroicon-m-calendar')
-                ->color('success')
+                ->color('success'),
+
+            Stat::make('Total Sawit Masuk Hari Ini', number_format($totalSawitHariIni, 0, ',', '.') . ' Kg')
+                ->description('Tanggal ' . Carbon::today()->format('d F Y'))
+                ->descriptionIcon('heroicon-m-scale')
+                ->chart($chartData)
+                ->chartColor('success')
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all hover:scale-105',
+                ]),
         ];
     }
 }

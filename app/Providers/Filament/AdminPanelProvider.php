@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\PinjamResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -17,6 +18,8 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Jeffgreco13\FilamentBreezy\BreezyCore;
+use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -30,9 +33,10 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->id('admin')
             ->path('admin')
-            ->brandLogo(asset('images/logo2.png'))
-            ->favicon(asset('images/logo2.png'))
+            ->brandLogo(asset('images/successw.png'))
+            ->favicon(asset('images/successw.png'))
             ->login()
+            // ->plugin(\TomatoPHP\FilamentPWA\FilamentPWAPlugin::make())
             ->colors([
                 'primary' => Color::Amber,
                 'secondary' => Color::Cyan,
@@ -41,8 +45,8 @@ class AdminPanelProvider extends PanelProvider
                 'success' => Color::Green,
                 'info' => Color::Blue,
 
-
             ])
+
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
