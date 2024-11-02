@@ -11,8 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('transaksi_do', function (Blueprint $table) {
-            $table->unsignedBigInteger('total')->change();
+        Schema::create('pabriks', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama');
+            $table->string('alamat')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+
+            // Indexes
+            $table->index('nama');
         });
     }
 
@@ -21,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('pabriks');
     }
 };

@@ -34,9 +34,9 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandLogo(asset('images/successw.png'))
+            ->brandLogoHeight('50px')
             ->favicon(asset('images/successw.png'))
             ->login()
-            // ->plugin(\TomatoPHP\FilamentPWA\FilamentPWAPlugin::make())
             ->colors([
                 'primary' => Color::Amber,
                 'secondary' => Color::Cyan,

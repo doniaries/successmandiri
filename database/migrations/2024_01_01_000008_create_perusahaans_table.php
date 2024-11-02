@@ -11,11 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pabriks', function (Blueprint $table) {
+        Schema::create('perusahaans', function (Blueprint $table) {
             $table->id();
             $table->string('nama');
             $table->string('alamat')->nullable();
+            $table->string('pimpinan')->nullable()->comment('Pimpinan Perusahaan');
+            $table->foreignId('kasir_id')->nullable()->comment('Kasir Perusahaan')->constrained('users')->nullOnDelete();
+            $table->boolean('is_active')->default(true)->comment('Status aktif perusahaan');
             $table->timestamps();
+            $table->softDeletes();
+
+            // Indexes
+            $table->index('nama');
         });
     }
 
@@ -24,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pabriks');
+        Schema::dropIfExists('perusahaans');
     }
 };

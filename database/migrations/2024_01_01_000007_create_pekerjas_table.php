@@ -16,12 +16,14 @@ return new class extends Migration
             $table->string('nama');
             $table->string('alamat')->nullable();
             $table->string('telepon')->nullable();
-            $table->decimal('pendapatan', 15, 0)->default(0);  // Ubah precision dan scale
-            $table->decimal('hutang', 15, 0)->default(0);      // Ubah precision dan scale
-            // $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            // $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->decimal('pendapatan', 15, 0)->default(0);
+            $table->decimal('hutang', 15, 0)->default(0);
             $table->timestamps();
             $table->softDeletes();
+
+            // Indexes
+            $table->index('nama');
+            $table->index('telepon');
         });
     }
 

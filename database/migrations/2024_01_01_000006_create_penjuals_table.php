@@ -19,6 +19,10 @@ return new class extends Migration
             $table->decimal('hutang', 15, 0)->nullable();
             $table->timestamps();
             $table->softDeletes();
+
+            // Indexes
+            $table->index('nama');
+            $table->index('telepon');
         });
     }
 

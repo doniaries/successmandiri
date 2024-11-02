@@ -149,6 +149,36 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\Grid::make()
                                 ->schema([
+                                    Forms\Components\Select::make('penjual_id')
+                                        ->label('Penjual')
+                                        ->placeholder('Pilih Nama Penjual')
+                                        ->relationship('penjual', 'nama')
+                                        ->searchable()
+                                        ->preload()
+                                        ->hint('Tambahkan Penjual Baru')
+                                        ->hintIcon('heroicon-m-arrow-down-circle')
+                                        ->hintColor('primary')
+                                        ->createOptionForm([
+                                            Forms\Components\TextInput::make('nama')
+                                                ->required()
+                                                ->label('Nama'),
+                                            Forms\Components\TextInput::make('alamat')
+                                                ->required()
+                                                ->label('Alamat'),
+                                            Forms\Components\TextInput::make('telepon')
+                                                ->required()
+                                                ->label('Telepon/HP'),
+                                        ])
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                            if ($state) {
+                                                $hutang = Penjual::find($state)?->hutang ?? 0;
+                                                $set('hutang', $hutang);
+                                            } else {
+                                                $set('hutang', 0);
+                                            }
+                                        })
+                                        ->required(),
                                     Forms\Components\TextInput::make('upah_bongkar')
                                         ->label('Upah Bongkar')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)

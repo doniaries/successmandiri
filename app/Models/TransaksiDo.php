@@ -21,6 +21,7 @@ class TransaksiDo extends Model
         'tonase',
         'harga_satuan',
         'total',
+        'pekerja_id',
         'upah_bongkar',
         'hutang',
         'bayar_hutang',
