@@ -42,7 +42,6 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('nomor')
                                 ->label('Nomor DO')
-                                // ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
                                 ->default(fn() => TransaksiDo::generateMonthlyNumber())
                                 ->disabled()
                                 ->dehydrated(),
@@ -52,7 +51,7 @@ class TransaksiDoResource extends Resource
                                 ->timezone('Asia/Jakarta')
                                 ->displayFormat('d/m/Y H:i')
                                 ->default(now())
-                                // ->disabled()
+                                ->disabled()
                                 ->required()
                                 ->dehydrated(),
 
