@@ -62,18 +62,65 @@ class TransaksiDo extends Model
             ->withTimestamps();
     }
 
+    public function getTotalPekerjaAttribute()
+    {
+        return $this->pekerjas()
+            ->whereNull('pekerjas.deleted_at')
+            ->count();
+    }
+
     public function updatePendapatanPekerja()
     {
         $jumlahPekerja = $this->pekerjas()->count();
         if ($jumlahPekerja > 0) {
             $pendapatanPerPekerja = $this->upah_bongkar / $jumlahPekerja;
 
-            $this->pekerjas()->each(function ($pekerja) use ($pendapatanPerPekerja) {
+            $this->pekerjas->each(function ($pekerja) use ($pendapatanPerPekerja) {
+                // Kurangi pendapatan lama jika ada
+                $pendapatanLama = $this->pekerjas()
+                    ->where('pekerja_id', $pekerja->id)
+                    ->first()
+                    ?->pivot
+                    ?->pendapatan_pekerja ?? 0;
+
+                $pekerja->decrement('pendapatan', $pendapatanLama);
+
+                // Update dengan pendapatan baru
                 $pekerja->increment('pendapatan', $pendapatanPerPekerja);
                 $this->pekerjas()->updateExistingPivot($pekerja->id, [
                     'pendapatan_pekerja' => $pendapatanPerPekerja
                 ]);
             });
         }
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Update pendapatan saat transaksi dibuat
+        static::created(function ($transaksiDo) {
+            $transaksiDo->updatePendapatanPekerja();
+        });
+
+        // Update pendapatan saat transaksi diupdate
+        static::updated(function ($transaksiDo) {
+            if ($transaksiDo->isDirty('upah_bongkar')) {
+                $transaksiDo->updatePendapatanPekerja();
+            }
+        });
+
+        // Kurangi pendapatan saat transaksi dihapus
+        static::deleting(function ($transaksiDo) {
+            $transaksiDo->pekerjas->each(function ($pekerja) use ($transaksiDo) {
+                $pendapatan = $transaksiDo->pekerjas()
+                    ->where('pekerja_id', $pekerja->id)
+                    ->first()
+                    ->pivot
+                    ->pendapatan_pekerja;
+
+                $pekerja->decrement('pendapatan', $pendapatan);
+            });
+        });
     }
 }

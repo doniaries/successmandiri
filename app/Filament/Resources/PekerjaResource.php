@@ -10,15 +10,16 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Infolists\Infolist;
+use Filament\Support\Colors\Color;
+use Filament\Infolists\Components\Section;
+use Filament\Infolists\Components\TextEntry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-
 
 class PekerjaResource extends Resource
 {
     protected static ?string $model = Pekerja::class;
-
-    // protected static ?string $navigationGroup = 'Master Data';
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?int $navigationSort = 4;
 
@@ -44,10 +45,6 @@ class PekerjaResource extends Resource
                     ->prefix('Rp. ')
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                     ->default(0),
-                // Forms\Components\TextInput::make('created_by')
-                //     ->numeric(),
-                // Forms\Components\TextInput::make('updated_by')
-                //     ->numeric(),
             ]);
     }
 
@@ -67,26 +64,17 @@ class PekerjaResource extends Resource
                 Tables\Columns\TextColumn::make('hutang')
                     ->money('IDR')
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('deleted_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
-
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -99,10 +87,35 @@ class PekerjaResource extends Resource
             ]);
     }
 
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Section::make('Informasi Pekerja')
+                    ->schema([
+                        TextEntry::make('nama')
+                            ->label('Nama Lengkap'),
+                        TextEntry::make('alamat'),
+                        TextEntry::make('telepon')
+                            ->label('No. Telepon'),
+                        TextEntry::make('pendapatan')
+                            ->money('IDR')
+                            ->color('success'),
+                        TextEntry::make('hutang')
+                            ->money('IDR')
+                            ->color('danger'),
+                        TextEntry::make('created_at')
+                            ->label('Terdaftar Pada')
+                            ->dateTime('d/m/Y H:i'),
+                    ])
+                    ->columns(2),
+            ]);
+    }
+
     public static function getRelations(): array
     {
         return [
-            //
+            \App\Filament\Resources\PekerjaResource\RelationManagers\TransaksiDoRelationManager::class,
         ];
     }
 
@@ -111,6 +124,7 @@ class PekerjaResource extends Resource
         return [
             'index' => Pages\ListPekerjas::route('/'),
             'create' => Pages\CreatePekerja::route('/create'),
+            'view' => Pages\ViewPekerja::route('/{record}'),
             'edit' => Pages\EditPekerja::route('/{record}/edit'),
         ];
     }

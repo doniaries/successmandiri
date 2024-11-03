@@ -10,7 +10,7 @@ class Pekerja extends Model
 {
     use HasFactory, SoftDeletes;
 
-    public $table = 'pekerjas';
+    protected $table = 'pekerjas'; // Perbaikan nama tabel
 
     protected $fillable = [
         'nama',
@@ -18,14 +18,11 @@ class Pekerja extends Model
         'telepon',
         'pendapatan',
         'hutang',
-        // 'created_by',
-        // 'updated_by',
     ];
 
     protected $dates = [
         'deleted_at',
     ];
-
 
     protected $casts = [
         'pendapatan' => 'decimal:0',
@@ -35,7 +32,20 @@ class Pekerja extends Model
         'deleted_at' => 'datetime',
     ];
 
+    public function transaksiDos()
+    {
+        return $this->belongsToMany(TransaksiDo::class, 'pekerja_transaksi_do')
+            ->withPivot('pendapatan_pekerja')
+            ->withTimestamps()
+            ->orderBy('tanggal', 'desc');
+    }
 
+    // Helper method untuk mendapatkan total pendapatan dari transaksi
+    public function getTotalPendapatanAttribute()
+    {
+        return $this->transaksiDos()
+            ->sum('pekerja_transaksi_do.pendapatan_pekerja');
+    }
 
     // Scope untuk data aktif
     public function scopeActive($query)
