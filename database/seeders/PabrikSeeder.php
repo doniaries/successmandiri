@@ -25,5 +25,9 @@ class PabrikSeeder extends Seeder
                 'nama' => 'PT. KPPS',
                 'alamat' => 'Muaro Takung',
             ],
+        ];
+        foreach ($pabriks as $pabrik) {
+            \App\Models\Pabrik::create($pabrik);
+        }
     }
 }

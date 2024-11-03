@@ -148,36 +148,6 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\Grid::make()
                                 ->schema([
-                                    Forms\Components\Select::make('penjual_id')
-                                        ->label('Penjual')
-                                        ->placeholder('Pilih Nama Penjual')
-                                        ->relationship('penjual', 'nama')
-                                        ->searchable()
-                                        ->preload()
-                                        ->hint('Tambahkan Penjual Baru')
-                                        ->hintIcon('heroicon-m-arrow-down-circle')
-                                        ->hintColor('primary')
-                                        ->createOptionForm([
-                                            Forms\Components\TextInput::make('nama')
-                                                ->required()
-                                                ->label('Nama'),
-                                            Forms\Components\TextInput::make('alamat')
-                                                ->required()
-                                                ->label('Alamat'),
-                                            Forms\Components\TextInput::make('telepon')
-                                                ->required()
-                                                ->label('Telepon/HP'),
-                                        ])
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                            if ($state) {
-                                                $hutang = Penjual::find($state)?->hutang ?? 0;
-                                                $set('hutang', $hutang);
-                                            } else {
-                                                $set('hutang', 0);
-                                            }
-                                        })
-                                        ->required(),
                                     Forms\Components\TextInput::make('upah_bongkar')
                                         ->label('Upah Bongkar')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
@@ -187,8 +157,43 @@ class TransaksiDoResource extends Resource
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
 
+                                    Forms\Components\Section::make('Pekerja')
+                                        ->schema([
+                                            Forms\Components\Select::make('pekerja_ids')
+                                                ->label('Pilih Pekerja')
+                                                ->multiple()
+                                                ->relationship(
+                                                    name: 'pekerjas',
+                                                    titleAttribute: 'nama',
+                                                    modifyQueryUsing: fn($query) => $query->whereNull('deleted_at')
+                                                )
+                                                ->preload()
+                                                ->searchable()
+                                                ->required()
+                                                ->live()
+                                                ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                                    $upahBongkar = $get('upah_bongkar') ?? 0;
+                                                    $jumlahPekerja = count($state ?? []);
+
+                                                    if ($jumlahPekerja > 0) {
+                                                        $pendapatanPerPekerja = $upahBongkar / $jumlahPekerja;
+                                                        $set('pendapatan_per_pekerja', $pendapatanPerPekerja);
+                                                    }
+                                                }),
+
+                                            Forms\Components\TextInput::make('pendapatan_per_pekerja')
+                                                ->label('Pendapatan Per Pekerja')
+                                                ->disabled()
+                                                ->dehydrated(false)
+                                                ->prefix('Rp')
+                                                ->numeric()
+                                                ->mask(fn($get) => $get('upah_bongkar') ? number_format($get('upah_bongkar') / max(1, count($get('pekerja_ids') ?? [])), 0, ',', '.') : '0'),
+                                        ])
+                                        ->columnSpan(2),
+
                                     Forms\Components\TextInput::make('bayar_hutang')
                                         ->label('Bayar Hutang')
+                                        ->default(0)
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
                                         // ->required()
@@ -236,8 +241,12 @@ class TransaksiDoResource extends Resource
                                         ->label('Sisa Hutang')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
+                                        ->default(0)
                                         ->disabled()
-                                        ->dehydrated(),
+                                        ->dehydrated()
+                                        ->live(onBlur: true)
+                                        ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
+                                        static::hitungPembayaranHutang($state, $get, $set)),
 
                                     Forms\Components\TextInput::make('sisa_bayar')
                                         ->label('Sisa Bayar')
@@ -459,12 +468,20 @@ class TransaksiDoResource extends Resource
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Hitung sisa hutang
-        $hutang = (int)str_replace(['.', ','], ['', '.'], $data['hutang'] ?? 0);
-        $bayarHutang = (int)str_replace(['.', ','], ['', '.'], $data['bayar_hutang'] ?? 0);
-        $data['sisa_hutang'] = $hutang - $bayarHutang;
+        // Set default values for any potentially null fields
+        $defaults = [
+            'nomor_polisi' => '',
+            'catatan' => '',
+            'bayar_hutang' => 0,
+            'hutang' => 0,
+            'sisa_hutang' => 0,
+            'sisa_bayar' => 0,
+            'upah_bongkar' => 0,
+        ];
 
-        // Format angka lainnya
+        $data = array_merge($defaults, $data);
+
+        // Clean numeric values
         $numericFields = [
             'tonase',
             'harga_satuan',
@@ -472,15 +489,58 @@ class TransaksiDoResource extends Resource
             'upah_bongkar',
             'hutang',
             'bayar_hutang',
+            'sisa_hutang',
             'sisa_bayar'
         ];
 
         foreach ($numericFields as $field) {
             if (isset($data[$field])) {
-                $data[$field] = (int)str_replace(['.', ','], ['', '.'], $data[$field]);
+                // Remove thousand separators and convert decimal separator
+                $value = str_replace(['.', ','], ['', '.'], $data[$field]);
+                // Convert to integer, defaulting to 0 if empty
+                $data[$field] = $value !== '' ? (int)$value : 0;
+            } else {
+                $data[$field] = 0;
             }
         }
 
+        // Ensure sisa_hutang is calculated correctly
+        $hutang = $data['hutang'] ?? 0;
+        $bayarHutang = $data['bayar_hutang'] ?? 0;
+        $data['sisa_hutang'] = $hutang - $bayarHutang;
+
+        // Calculate total if not set
+        if (!isset($data['total'])) {
+            $data['total'] = ($data['tonase'] ?? 0) * ($data['harga_satuan'] ?? 0);
+        }
+
+        // Calculate sisa_bayar
+        $data['sisa_bayar'] = ($data['total'] ?? 0) - ($data['upah_bongkar'] ?? 0) - ($data['bayar_hutang'] ?? 0);
+
         return $data;
+    }
+
+    public function afterCreate(): void
+    {
+        // Update pendapatan pekerja
+        if (isset($this->record) && $this->record->pekerjas()->count() > 0) {
+            $upahPerPekerja = $this->record->upah_bongkar / $this->record->pekerjas()->count();
+
+            $this->record->pekerjas()->each(function ($pekerja) use ($upahPerPekerja) {
+                $pekerja->increment('pendapatan', $upahPerPekerja);
+            });
+        }
+    }
+
+    public function afterDelete(): void
+    {
+        // Rollback pendapatan pekerja
+        if (isset($this->record)) {
+            $upahPerPekerja = $this->record->upah_bongkar / max(1, $this->record->pekerjas()->count());
+
+            $this->record->pekerjas()->each(function ($pekerja) use ($upahPerPekerja) {
+                $pekerja->decrement('pendapatan', $upahPerPekerja);
+            });
+        }
     }
 }

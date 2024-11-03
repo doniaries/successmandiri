@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class UserSeeder extends Seeder
 {
@@ -28,8 +29,34 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
-        // Create some sample users
-        \App\Models\User::factory(3)->create([
+        \App\Models\User::create([
+            'name' => 'Kasir 1',
+            'email' => 'kasir1@gmail.com',
+            'password' => Hash::make('password'),
+            'status' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        \App\Models\User::create([
+            'name' => 'Kasir 2',
+            'email' => 'kasir2@gmail.com',
+            'password' => Hash::make('password'),
+            'status' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        \App\Models\User::create([
+            'name' => 'Kasir 3',
+            'email' => 'kasir3@gmail.com',
+            'password' => Hash::make('password'),
+            'status' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        \App\Models\User::create([
+            'name' => 'Kasir 4',
+            'email' => 'kasir4@gmail.com',
+            'password' => Hash::make('password'),
             'status' => true,
             'email_verified_at' => now(),
         ]);

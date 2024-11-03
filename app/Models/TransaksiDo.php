@@ -9,8 +9,8 @@ use App\Traits\GenerateMonthlyNumber;
 
 class TransaksiDo extends Model
 {
-
     use HasFactory, SoftDeletes, GenerateMonthlyNumber;
+
     protected $table = 'transaksi_do';
 
     protected $fillable = [
@@ -21,17 +21,14 @@ class TransaksiDo extends Model
         'tonase',
         'harga_satuan',
         'total',
-        'pekerja_id',
         'upah_bongkar',
         'hutang',
         'bayar_hutang',
-        'sisa_hutang', // tambahkan ini
+        'sisa_hutang',
         'sisa_bayar',
         'file_do',
         'cara_bayar',
         'catatan',
-        // 'created_by',
-        // 'updated_by',
     ];
 
     protected $dates = [
@@ -39,7 +36,6 @@ class TransaksiDo extends Model
         'created_at',
         'updated_at',
         'deleted_at'
-
     ];
 
     protected $casts = [
@@ -54,58 +50,30 @@ class TransaksiDo extends Model
         'sisa_bayar' => 'integer',
     ];
 
-    protected $attributes = [
-        'sisa_hutang' => 0,
-    ];
-
-
     public function penjual()
     {
-        return $this->belongsTo(Penjual::class, 'penjual_id');
+        return $this->belongsTo(Penjual::class);
     }
 
-    public function pekerja()
+    public function pekerjas()
     {
-        return $this->belongsTo(Pekerja::class);
+        return $this->belongsToMany(Pekerja::class, 'pekerja_transaksi_do')
+            ->withPivot('pendapatan_pekerja')
+            ->withTimestamps();
     }
 
-    public function user()
+    public function updatePendapatanPekerja()
     {
-        return $this->belongsTo(User::class);
+        $jumlahPekerja = $this->pekerjas()->count();
+        if ($jumlahPekerja > 0) {
+            $pendapatanPerPekerja = $this->upah_bongkar / $jumlahPekerja;
+
+            $this->pekerjas()->each(function ($pekerja) use ($pendapatanPerPekerja) {
+                $pekerja->increment('pendapatan', $pendapatanPerPekerja);
+                $this->pekerjas()->updateExistingPivot($pekerja->id, [
+                    'pendapatan_pekerja' => $pendapatanPerPekerja
+                ]);
+            });
+        }
     }
-
-
-    // Accessor untuk perhitungan otomatis:
-
-    // public function getTotalAttribute($value)
-    // {
-    //     return $this->tonase * $this->harga_satuan;
-    // }
-
-    public function getTotalAttribute($value)
-    {
-        // Kalkulasi total dan format dengan number_format
-        $total = (int)$this->tonase * (int)$this->harga_satuan;
-        return $total;
-    }
-
-    // public function getFormattedTotalAttribute()
-    // {
-    //     return number_format($this->total, 0, '', '.');
-    // }
-
-    // public function getFormattedHutangAttribute()
-    // {
-    //     return number_format($this->hutang, 0, '', '.');
-    // }
-
-    // public function getFormattedSisaHutangAttribute()
-    // {
-    //     return number_format($this->sisa_hutang, 0, '', '.');
-    // }
-
-    // public function getFormattedSisaBayarAttribute()
-    // {
-    //     return number_format($this->sisa_bayar, 0, '', '.');
-    // }
 }
