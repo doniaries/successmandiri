@@ -152,7 +152,8 @@ class TransaksiDoResource extends Resource
                                         ->label('Upah Bongkar')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->required()
+                                        ->default(0)
+                                        // ->required()
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
@@ -169,7 +170,7 @@ class TransaksiDoResource extends Resource
                                                 )
                                                 ->preload()
                                                 ->searchable()
-                                                ->required()
+                                                // ->required()
                                                 ->live()
                                                 ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                                     $upahBongkar = $get('upah_bongkar') ?? 0;
@@ -523,6 +524,82 @@ class TransaksiDoResource extends Resource
         $data['sisa_bayar'] = ($data['total'] ?? 0) - ($data['upah_bongkar'] ?? 0) - ($data['bayar_hutang'] ?? 0);
 
         return $data;
+    }
+
+    public static function getModel(): string
+    {
+        return TransaksiDo::class;
+    }
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        $record = static::getModel()::create($data);
+
+        // Update pendapatan pekerja jika ada
+        if (isset($data['pekerja_ids']) && count($data['pekerja_ids']) > 0) {
+            $upahPerPekerja = $data['upah_bongkar'] / count($data['pekerja_ids']);
+
+            foreach ($data['pekerja_ids'] as $pekerjaId) {
+                $pekerja = Pekerja::find($pekerjaId);
+                if ($pekerja) {
+                    // Attach pekerja dengan pivot data
+                    $record->pekerjas()->attach($pekerjaId, [
+                        'pendapatan_pekerja' => $upahPerPekerja
+                    ]);
+
+                    // Update total pendapatan pekerja
+                    $pekerja->increment('pendapatan', $upahPerPekerja);
+                }
+            }
+        }
+
+        return $record;
+    }
+
+    protected function handleRecordUpdate(Model $record, array $data): Model
+    {
+        // Rollback pendapatan lama
+        $record->pekerjas->each(function ($pekerja) use ($record) {
+            $pendapatanLama = $pekerja->pivot->pendapatan_pekerja;
+            $pekerja->decrement('pendapatan', $pendapatanLama);
+        });
+
+        // Update record
+        $record->update($data);
+
+        // Update pendapatan baru
+        if (isset($data['pekerja_ids']) && count($data['pekerja_ids']) > 0) {
+            $upahPerPekerja = $data['upah_bongkar'] / count($data['pekerja_ids']);
+
+            // Detach semua pekerja dulu
+            $record->pekerjas()->detach();
+
+            foreach ($data['pekerja_ids'] as $pekerjaId) {
+                $pekerja = Pekerja::find($pekerjaId);
+                if ($pekerja) {
+                    // Attach dengan data baru
+                    $record->pekerjas()->attach($pekerjaId, [
+                        'pendapatan_pekerja' => $upahPerPekerja
+                    ]);
+
+                    // Update total pendapatan
+                    $pekerja->increment('pendapatan', $upahPerPekerja);
+                }
+            }
+        }
+
+        return $record;
+    }
+
+    protected function handleRecordDeletion(Model $record): void
+    {
+        // Rollback pendapatan sebelum delete
+        $record->pekerjas->each(function ($pekerja) {
+            $pendapatan = $pekerja->pivot->pendapatan_pekerja;
+            $pekerja->decrement('pendapatan', $pendapatan);
+        });
+
+        $record->delete();
     }
 
     public function afterCreate(): void
