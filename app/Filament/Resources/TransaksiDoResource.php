@@ -323,6 +323,11 @@ class TransaksiDoResource extends Resource
                             ->money('IDR')
                     ])
                     ->sortable(),
+                Tables\Columns\TextColumn::make('pekerjas.nama')
+                    ->label('Pekerja')
+                    ->badge()
+                    ->separator(',')
+                    ->color(Color::Blue),
 
                 Tables\Columns\TextColumn::make('upah_bongkar')
                     ->label('Upah Bongkar')
