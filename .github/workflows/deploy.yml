@@ -1,144 +1,144 @@
 name: Deploy Laravel to Shared Hosting
 
 on:
- push:
-   branches: [ main ]
+  push:
+    branches: [ main ]
 
 jobs:
- deploy:
-   runs-on: ubuntu-latest
+  deploy:
+    runs-on: ubuntu-latest
 
-   steps:
-   - uses: actions/checkout@v2
+    steps:
+    - uses: actions/checkout@v2
 
-   - name: Setup PHP
-     uses: shivammathur/setup-php@v2
-     with:
-       php-version: '8.2'
-       extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
 
-   - name: Create .env file
-     run: |
-       cp .env.example .env
+    - name: Create .env file
+      run: |
+        cp .env.example .env
 
-   # Root Folder (Laravel Core)
-   - name: Deploy Laravel Files
-     uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-     with:
-       server: ${{ secrets.FTP_SERVER }}
-       username: ${{ secrets.FTP_USERNAME }}
-       password: ${{ secrets.FTP_PASSWORD }}
-       server-dir: /public_html/successapp.doniaries.my.id/
-       dangerous-clean-slate: false
-       exclude: |
-         **/.git*
-         **/.git*/**
-         **/node_modules/**
-         **/vendor/**
-         **/storage/framework/cache/**
-         **/storage/framework/sessions/**
-         **/storage/framework/views/**
-         **/storage/logs/**
-         **/tests/**
-         **/.env*
-         **/.editorconfig
-         **/.styleci.yml
-         **/phpunit.xml
-         **/README.md
-         **/.gitattributes
-         **/.gitignore
-         **/phpspec.yml
-         **/public/**
+    # Root Folder (Laravel Core)
+    - name: Deploy Laravel Files
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: /public_html/successapp.doniaries.my.id/
+        state-name: .ftp-deploy-sync-state.json  # Tambahkan ini
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/vendor/**
+          **/storage/framework/cache/**
+          **/storage/framework/sessions/**
+          **/storage/framework/views/**
+          **/storage/logs/**
+          **/tests/**
+          **/.env*
+          **/.editorconfig
+          **/.styleci.yml
+          **/phpunit.xml
+          **/README.md
+          **/.gitattributes
+          **/.gitignore
+          **/phpspec.yml
+          **/public/**
 
-   # Deploy Public Folder
-   - name: Create Public Directory
-     run: |
-       mkdir -p ./public-temp/
-       cp -r ./public/* ./public-temp/
+    # Deploy Public Folder
+    - name: Create Public Directory
+      run: |
+        mkdir -p ./public-temp/
+        cp -r ./public/* ./public-temp/
 
-   - name: Deploy Public Directory
-     uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-     with:
-       server: ${{ secrets.FTP_SERVER }}
-       username: ${{ secrets.FTP_USERNAME }}
-       password: ${{ secrets.FTP_PASSWORD }}
-       server-dir: /public_html/successapp.doniaries.my.id/public/
-       local-dir: ./public-temp/
-       dangerous-clean-slate: false
+    - name: Deploy Public Directory
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: /public_html/successapp.doniaries.my.id/public/
+        local-dir: ./public-temp/
+        state-name: .ftp-deploy-sync-state-public.json  # Tambahkan ini
 
-   # Create and Upload .htaccess
-   - name: Create and Deploy Root .htaccess
-     run: |
-       mkdir -p ./htaccess-temp/
-       echo '<IfModule mod_rewrite.c>
-           RewriteEngine On
-           RewriteCond %{REQUEST_URI} !^/public/
-           RewriteRule ^(.*)$ public/$1 [L]
+    # Upload .htaccess
+    - name: Create and Deploy Root .htaccess
+      run: |
+        mkdir -p ./htaccess-temp/
+        echo '<IfModule mod_rewrite.c>
+            RewriteEngine On
+            RewriteCond %{REQUEST_URI} !^/public/
+            RewriteRule ^(.*)$ public/$1 [L]
 
-           # Set PHP 8.2
-           <FilesMatch \.php$>
-               SetHandler "proxy:unix:/opt/alt/php82/usr/var/run/php-fpm.sock|fcgi://localhost"
-           </FilesMatch>
-       </IfModule>' > ./htaccess-temp/.htaccess
+            # Set PHP 8.2
+            <FilesMatch \.php$>
+                SetHandler "proxy:unix:/opt/alt/php82/usr/var/run/php-fpm.sock|fcgi://localhost"
+            </FilesMatch>
+        </IfModule>' > ./htaccess-temp/.htaccess
 
-   - name: Upload Root .htaccess
-     uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-     with:
-       server: ${{ secrets.FTP_SERVER }}
-       username: ${{ secrets.FTP_USERNAME }}
-       password: ${{ secrets.FTP_PASSWORD }}
-       server-dir: /public_html/successapp.doniaries.my.id/
-       local-dir: ./htaccess-temp/
-       dangerous-clean-slate: false
+    - name: Upload Root .htaccess
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: /public_html/successapp.doniaries.my.id/
+        local-dir: ./htaccess-temp/
+        state-name: .ftp-deploy-sync-state-htaccess.json  # Tambahkan ini
 
-   # Create and Upload Setup Script
-   - name: Create Setup Directory
-     run: |
-       mkdir -p ./setup-temp/
-       echo '<?php
-       shell_exec("/opt/alt/php82/usr/bin/php -v");
-       shell_exec("cd /home/doniarie/public_html/successapp.doniaries.my.id && /opt/alt/php82/usr/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader");
-       shell_exec("/opt/alt/php82/usr/bin/php artisan key:generate --force");
-       shell_exec("/opt/alt/php82/usr/bin/php artisan storage:link");
-       shell_exec("/opt/alt/php82/usr/bin/php artisan optimize:clear");
-       shell_exec("/opt/alt/php82/usr/bin/php artisan optimize");
-       shell_exec("chmod -R 755 storage");
-       shell_exec("chmod -R 755 bootstrap/cache");
-       shell_exec("chmod 644 .env");
-       echo "Setup completed!";
-       ' > ./setup-temp/setup.php
+    # Create setup script
+    - name: Create Setup Directory
+      run: |
+        mkdir -p ./setup-temp/
+        echo '<?php
+        shell_exec("/opt/alt/php82/usr/bin/php -v");
+        shell_exec("cd /public_html/successapp.doniaries.my.id && /opt/alt/php82/usr/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader");
+        shell_exec("/opt/alt/php82/usr/bin/php artisan key:generate --force");
+        shell_exec("/opt/alt/php82/usr/bin/php artisan storage:link");
+        shell_exec("/opt/alt/php82/usr/bin/php artisan optimize:clear");
+        shell_exec("/opt/alt/php82/usr/bin/php artisan optimize");
+        shell_exec("chmod -R 755 storage");
+        shell_exec("chmod -R 755 bootstrap/cache");
+        shell_exec("chmod 644 .env");
+        echo "Setup completed!";
+        ' > ./setup-temp/setup.php
 
-   - name: Upload Setup Script
-     uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-     with:
-       server: ${{ secrets.FTP_SERVER }}
-       username: ${{ secrets.FTP_USERNAME }}
-       password: ${{ secrets.FTP_PASSWORD }}
-       server-dir: /public_html/successapp.doniaries.my.id/
-       local-dir: ./setup-temp/
-       dangerous-clean-slate: false
+    - name: Upload Setup Script
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: /public_html/successapp.doniaries.my.id/
+        local-dir: ./setup-temp/
+        state-name: .ftp-deploy-sync-state-setup.json  # Tambahkan ini
 
-   # Create and Upload Index File
-   - name: Create Index Directory
-     run: |
-       mkdir -p ./index-temp/
-       echo '<?php
-       require __DIR__."/../vendor/autoload.php";
-       $app = require_once __DIR__."/../bootstrap/app.php";
-       $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-       $response = $kernel->handle(
-           $request = Illuminate\Http\Request::capture()
-       );
-       $response->send();
-       $kernel->terminate($request, $response);
-       ' > ./index-temp/index.php
+    # Update index.php
+    - name: Create Index Directory
+      run: |
+        mkdir -p ./index-temp/
+        echo '<?php
+        require __DIR__."/../vendor/autoload.php";
+        $app = require_once __DIR__."/../bootstrap/app.php";
+        $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+        $response = $kernel->handle(
+            $request = Illuminate\Http\Request::capture()
+        );
+        $response->send();
+        $kernel->terminate($request, $response);
+        ' > ./index-temp/index.php
 
-   - name: Upload Index File
-     uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-     with:
-       server: ${{ secrets.FTP_SERVER }}
-       username: ${{ secrets.FTP_USERNAME }}
-       password: ${{ secrets.FTP_PASSWORD }}
-       server-dir: /public_html/successapp.doniaries.my.id/public/
-       local-dir: ./index-temp/
-       dangerous-clean-slate: false
+    - name: Upload Index File
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: /public_html/successapp.doniaries.my.id/public/
+        local-dir: ./index-temp/
+        state-name: .ftp-deploy-sync-state-index.json  # Tambahkan ini
