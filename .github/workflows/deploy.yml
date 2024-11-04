@@ -7,50 +7,62 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.2'
+        php-version: '8.2'  # Update ke PHP 8.2
         extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, iconv, json, mbstring, pdo
 
-    - name: Get composer cache directory
+    - name: Cache Composer packages
       id: composer-cache
-      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-    - name: Cache dependencies
       uses: actions/cache@v3
       with:
-        path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-        restore-keys: ${{ runner.os }}-composer-
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest --no-dev
+    - name: Install Dependencies
+      run: |
+        composer install --no-dev --optimize-autoloader --no-progress
 
-    - name: Generate application key
+    - name: Generate key
       run: php artisan key:generate --force
 
-    - name: Directory Permissions
-      run: chmod -R 777 storage bootstrap/cache
-
-    - name: Optimize Laravel
+    - name: Clear and Cache config
       run: |
+        php artisan config:clear
         php artisan config:cache
+        php artisan route:clear
         php artisan route:cache
+        php artisan view:clear
         php artisan view:cache
 
     - name: Deploy to Shared Hosting
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        server: ${{ secrets.SERVER }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
         server-dir: /public_html/successapp.doniaries.my.id/
         exclude: |
           **/.git*
           **/.git*/**
           **/node_modules/**
-          tests/**
+          **/storage/framework/cache/**
+          **/storage/framework/sessions/**
+          **/storage/framework/views/**
+          **/storage/logs/**
+          **/tests/**
+          **/.env*
+          **/.editorconfig
+          **/.styleci.yml
+          **/phpunit.xml
+          **/README.md
+          **/.gitattributes
+          **/.gitignore
+          **/phpspec.yml
