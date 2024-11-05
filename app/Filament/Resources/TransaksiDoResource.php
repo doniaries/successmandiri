@@ -19,6 +19,7 @@ use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Support\Enums\IconPosition;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Storage;
+use Filament\Tables\Actions\CreateAction;
 
 class TransaksiDoResource extends Resource
 {
@@ -275,13 +276,21 @@ class TransaksiDoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                CreateAction::make()
+                    ->label('Buat')
+                    ->icon('heroicon-m-plus')
+                    ->size('lg')
+                    ->color('secondary'),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('file_do') //image file do
                     ->label('File DO')
+                    ->tooltip('klik untuk melihat')
                     ->alignCenter()
                     ->icon('heroicon-m-document')
                     ->iconPosition(IconPosition::Before)
-                    ->color('primary')
+                    ->color(Color::Emerald)
                     ->formatStateUsing(fn($state) => $state ? 'Lihat' : '-')
                     ->action(
                         Action::make('previewFile')
