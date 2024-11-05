@@ -30,10 +30,10 @@ class User extends Authenticatable
     ];
 
 
-    // public function canAccessPanel(Panel $panel): bool
-    // {
-    //     return str_ends_with($this->email, 'doniaries@gmail.com') && $this->hasVerifiedEmail();
-    // }
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return str_ends_with($this->email, 'doniaries@gmail.com') && $this->hasVerifiedEmail();
+    }
 
     protected $hidden = [
         'password',
