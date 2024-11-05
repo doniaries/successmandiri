@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\TransaksiDoResource\Pages;
 use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDOWidget;
 use Filament\Tables\Columns\Summarizers\Count;
+use Filament\Support\Enums\IconPosition;
+use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Storage;
 
 class TransaksiDoResource extends Resource
 {
@@ -273,6 +276,23 @@ class TransaksiDoResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('file_do') //image file do
+                    ->label('File DO')
+                    ->alignCenter()
+                    ->icon('heroicon-m-document')
+                    ->iconPosition(IconPosition::Before)
+                    ->color('primary')
+                    ->formatStateUsing(fn($state) => $state ? 'Lihat' : '-')
+                    ->action(
+                        Action::make('previewFile')
+                            ->modalHeading('Preview File DO')
+                            ->modalWidth('4xl')
+                            ->modalContent(fn($record) => view(
+                                'filament.components.file-viewer',
+                                ['url' => Storage::url($record->file_do ?? '')]
+                            ))
+                    ),
+
                 Tables\Columns\TextColumn::make('nomor')
                     ->label('Nomor')
                     ->searchable()
@@ -288,7 +308,6 @@ class TransaksiDoResource extends Resource
                     ->badge()
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-
 
                 Tables\Columns\TextColumn::make('penjual.nama')
                     ->label('Penjual')
@@ -379,6 +398,7 @@ class TransaksiDoResource extends Resource
                         'Transfer' => 'info',
                         default => 'gray',
                     }),
+
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')

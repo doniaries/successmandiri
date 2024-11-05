@@ -24,6 +24,14 @@ class PenjualResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
+    public static function getNavigationLabel(): string
+    {
+        return 'Data Penjual'; // Contoh untuk PenjualResource
+    }
+    public static function getPluralModelLabel(): string
+    {
+        return 'Data Penjual';
+    }
 
 
     public static function getNavigationBadge(): ?string

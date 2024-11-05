@@ -12,6 +12,19 @@ class EditTransaksiDo extends EditRecord
 {
     protected static string $resource = TransaksiDoResource::class;
 
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        return $record->nama;
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        return [
+            'Telepon' => $record->telepon,
+            'Hutang' => money($record->hutang, 'IDR'),
+        ];
+    }
+
     protected function afterSave(): void
     {
         $record = $this->record;

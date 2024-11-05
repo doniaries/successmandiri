@@ -9,6 +9,7 @@
         "ariaieboy/filament-currency": "*",
         "deployer/deployer": "^7.5",
         "filament/filament": "^3.2",
+        "hugomyb/filament-media-action": "^3.1",
         "laravel-lang/common": "^6.4",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9"
