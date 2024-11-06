@@ -23,6 +23,8 @@ class TransaksiDo extends Model
         'harga_satuan',
         'total',
         'upah_bongkar',
+        'biaya_lain',
+        'keterangan_biaya_lain',
         'hutang',
         'bayar_hutang',
         'sisa_hutang',
@@ -45,11 +47,23 @@ class TransaksiDo extends Model
         'harga_satuan' => 'integer',
         'total' => 'integer',
         'upah_bongkar' => 'integer',
+        'biaya_lain' => 'integer',
         'hutang' => 'integer',
         'bayar_hutang' => 'integer',
         'sisa_hutang' => 'integer',
         'sisa_bayar' => 'integer',
     ];
+
+    protected $attributes = [
+        'total' => 0,
+        'upah_bongkar' => 0,
+        'biaya_lain' => 0,
+        'hutang' => 0,
+        'bayar_hutang' => 0,
+        'sisa_hutang' => 0,
+        'sisa_bayar' => 0,
+    ];
+
 
     public function penjual()
     {
