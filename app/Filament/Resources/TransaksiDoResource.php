@@ -289,7 +289,6 @@ class TransaksiDoResource extends Resource
                     ->tooltip('klik untuk melihat')
                     ->alignCenter()
                     ->icon('heroicon-m-document')
-                    ->iconPosition(IconPosition::Before)
                     ->color(Color::Emerald)
                     ->formatStateUsing(fn($state) => $state ? 'Lihat' : '-')
                     ->action(

@@ -27,8 +27,8 @@ class PinjamResource extends Resource
 
     protected static ?string $navigationLabel = 'Peminjaman';
     protected static ?string $modelLabel = 'Data Pinjaman';
-    protected static ?string $navigationGroup = 'Operasional';
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
+    protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
     {
