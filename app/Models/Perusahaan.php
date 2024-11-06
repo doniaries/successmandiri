@@ -15,9 +15,15 @@ class Perusahaan extends Model
         'nama',
         'alamat',
         'pimpinan',
+        'is_active',
+        'saldo',
         'kasir_id',
     ];
 
+
+    protected $casts = [
+        'saldo' => 'decimal:0',
+    ];
     public function user()
     {
         return $this->belongsTo(User::class, 'id');

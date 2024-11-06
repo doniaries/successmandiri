@@ -2,18 +2,26 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\PerusahaanResource\Pages;
-use App\Filament\Resources\PerusahaanResource\RelationManagers;
-use App\Models\Perusahaan;
-use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
+use App\Models\User;
 use Filament\Tables;
+use Filament\Forms\Form;
+use App\Models\Perusahaan;
 use Filament\Tables\Table;
+use Filament\Resources\Resource;
+use Illuminate\Support\Facades\DB;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Grid;
+use Filament\Tables\Actions\Action;
+use Filament\Notifications\Notification;
+use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Factories\Relationship;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Filament\Resources\PerusahaanResource\Pages;
+use Illuminate\Database\Eloquent\Factories\Relationship;
+use App\Filament\Resources\PerusahaanResource\RelationManagers;
 
 class PerusahaanResource extends Resource
 {
@@ -49,8 +57,11 @@ class PerusahaanResource extends Resource
                     ->label('Kasir')
                     ->relationship('user', 'name')
                     ->preload()
-
                     ->searchable(),
+                Tables\Columns\TextColumn::make('saldo')
+                    ->money('IDR')
+                    ->sortable()
+                    ->alignRight(),
                 Forms\Components\Toggle::make('is_active')
                     ->required(),
                 // Forms\Components\TextInput::make('created_by')
@@ -70,6 +81,9 @@ class PerusahaanResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('pimpinan')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('saldo')
+                    ->money('IDR')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('user.name')
                     ->numeric()
                     ->sortable(),
@@ -100,6 +114,81 @@ class PerusahaanResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+                Action::make('saldo')
+                    ->label('Tambah Saldo')
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('success')
+                    ->modalHeading('Tambah Saldo Perusahaan')
+                    ->modalDescription('Masukkan jumlah saldo yang akan ditambahkan')
+                    ->form([
+                        Grid::make()
+                            ->schema([
+                                Section::make()
+                                    ->schema([
+                                        DatePicker::make('tanggal')
+                                            ->label('Tanggal Tambah Saldo')
+                                            ->default(now())
+                                            ->required(),
+
+                                        TextInput::make('nominal')
+                                            ->label('Nominal Tambah Saldo')
+                                            ->numeric()
+                                            ->required()
+                                            ->currencyMask(
+                                                thousandSeparator: '.',
+                                                decimalSeparator: ',',
+                                                precision: 0,
+                                            )
+                                            ->prefix('Rp')
+                                            ->placeholder('Masukkan nominal Tambah Saldo'),
+
+                                        Textarea::make('keterangan')
+                                            ->label('Keterangan')
+                                            ->placeholder('Masukkan Keterangan')
+                                            ->required()
+                                            ->rows(3),
+                                    ])
+                                    ->columns(1)
+                            ])
+                    ])
+                    ->action(function (Perusahaan $record, array $data): void {
+                        try {
+                            DB::beginTransaction();
+
+                            // Update saldo perusahaan
+                            $record->increment('saldo', $data['nominal']);
+
+                            // Catat di tabel operasional
+                            DB::table('operasional')->insert([
+                                'tanggal' => $data['tanggal'],
+                                'operasional' => 'isi_saldo',
+                                'atas_nama' => $record->nama,
+                                'nominal' => $data['nominal'],
+                                'keterangan' => $data['keterangan'],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+
+                            DB::commit();
+
+                            Notification::make()
+                                ->success()
+                                ->title('Berhasil Top Up')
+                                ->body('Saldo berhasil ditambahkan sebesar Rp ' . number_format($data['nominal'], 0, ',', '.'))
+                                ->send();
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+
+                            Notification::make()
+                                ->danger()
+                                ->title('Gagal Tambah Saldo')
+                                ->body('Terjadi kesalahan: ' . $e->getMessage())
+                                ->send();
+                        }
+                    })
+                    ->requiresConfirmation()
+                    ->modalButton('Tambah Saldo')
+                    ->visible(fn(Perusahaan $record): bool => $record->is_active),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

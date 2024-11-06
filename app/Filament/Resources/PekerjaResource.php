@@ -22,6 +22,7 @@ class PekerjaResource extends Resource
     protected static ?string $model = Pekerja::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?int $navigationSort = 4;
+    protected static ?string $navigationGroup = 'Master Data';
 
     public static function form(Form $form): Form
     {

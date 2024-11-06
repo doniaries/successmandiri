@@ -564,20 +564,22 @@ class TransaksiDoResource extends Resource
     {
         $record = static::getModel()::create($data);
 
-        // Update pendapatan pekerja jika ada
-        if (isset($data['pekerja_ids']) && count($data['pekerja_ids']) > 0) {
+        if (isset($data['pekerja_ids']) && is_array($data['pekerja_ids']) && count($data['pekerja_ids']) > 0) {
             $upahPerPekerja = $data['upah_bongkar'] / count($data['pekerja_ids']);
 
+            // Attach pekerja dengan pendapatan
             foreach ($data['pekerja_ids'] as $pekerjaId) {
+                $record->pekerjas()->attach($pekerjaId, [
+                    'pendapatan_pekerja' => $upahPerPekerja
+                ]);
+
+                // Update total pendapatan pekerja
                 $pekerja = Pekerja::find($pekerjaId);
                 if ($pekerja) {
-                    // Attach pekerja dengan pivot data
-                    $record->pekerjas()->attach($pekerjaId, [
-                        'pendapatan_pekerja' => $upahPerPekerja
-                    ]);
-
-                    // Update total pendapatan pekerja
-                    $pekerja->increment('pendapatan', $upahPerPekerja);
+                    $totalPendapatan = $pekerja->transaksiDos()
+                        ->whereNull('deleted_at')
+                        ->sum('pekerja_transaksi_do.pendapatan_pekerja');
+                    $pekerja->update(['pendapatan' => $totalPendapatan]);
                 }
             }
         }

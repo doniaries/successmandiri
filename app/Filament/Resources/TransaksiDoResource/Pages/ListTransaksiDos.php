@@ -17,14 +17,7 @@ class ListTransaksiDos extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make()
-                ->label('Buat')
-                ->icon('heroicon-m-plus')
-                ->button()
-                ->size('lg')
-                ->color('info'),
-        ];
+        return [];
     }
     protected function getActions(): array
     {
