@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class TransaksiWidget extends BaseWidget
 {
+
     protected function getStats(): array
     {
         // Hitung total sawit bulan ini
