@@ -16,10 +16,6 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\TransaksiDoResource\Pages;
 use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDOWidget;
 use Filament\Tables\Columns\Summarizers\Count;
-use Filament\Support\Enums\IconPosition;
-use Filament\Tables\Actions\Action;
-use Illuminate\Support\Facades\Storage;
-use Filament\Tables\Actions\CreateAction;
 
 class TransaksiDoResource extends Resource
 {
@@ -46,6 +42,7 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('nomor')
                                 ->label('Nomor DO')
+                                // ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
                                 ->default(fn() => TransaksiDo::generateMonthlyNumber())
                                 ->disabled()
                                 ->dehydrated(),
@@ -55,7 +52,7 @@ class TransaksiDoResource extends Resource
                                 ->timezone('Asia/Jakarta')
                                 ->displayFormat('d/m/Y H:i')
                                 ->default(now())
-                                ->disabled()
+                                // ->disabled()
                                 ->required()
                                 ->dehydrated(),
 
@@ -124,18 +121,24 @@ class TransaksiDoResource extends Resource
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungTotal($state, $get, $set)),
-                                    Forms\Components\Placeholder::make('total')
-                                        ->label('Sub Total')
-                                        ->content(function ($get) {
-                                            $total = $get('total') ?? 0;
-                                            return 'Rp ' . number_format($total, 0, ',', '.');
-                                        })
-                                        ->extraAttributes(['class' => 'text-2xl font-bold text-primary-600']),
                                 ])
-                                ->columns(3),
+                                ->columns(2),
                         ])
                         ->columnSpan(2),
+
+                    // Panel Kanan
+                    Forms\Components\Section::make()
+                        ->schema([
+                            Forms\Components\TextInput::make('total')
+                                ->label('Sub Total')
+                                ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
+                                ->prefix('Rp')
+                                ->disabled()
+                                ->dehydrated(),
+                        ])
+                        ->columnSpan(1),
                 ])
+                ->columns(3)
                 ->columnSpanFull(),
 
             // Perhitungan & Pembayaran Section
@@ -150,7 +153,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Upah Bongkar')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->default(0)
+                                        ->required()
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
@@ -159,76 +162,13 @@ class TransaksiDoResource extends Resource
                                         ->label('Biaya Lain')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->default(0)
+                                        ->required()
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
 
-
-                                ])
-                                ->columns(2),
-                        ])
-                        ->columnSpan(2),
-
-                    Forms\Components\Section::make()
-                        ->schema([
-                            Forms\Components\Grid::make()
-                                ->schema([
-                                    Forms\Components\Select::make('pekerja_ids')
-                                        ->label('Pilih Pekerja')
-                                        ->multiple()
-                                        ->relationship(
-                                            name: 'pekerjas',
-                                            titleAttribute: 'nama',
-                                            modifyQueryUsing: fn($query) => $query->whereNull('deleted_at')
-                                        )
-                                        ->preload()
-                                        ->searchable()
-                                        // ->required()
-                                        ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                            $upahBongkar = $get('upah_bongkar') ?? 0;
-                                            $jumlahPekerja = count($state ?? []);
-
-                                            if ($jumlahPekerja > 0) {
-                                                $pendapatanPerPekerja = $upahBongkar / $jumlahPekerja;
-                                                $set('pendapatan_per_pekerja', $pendapatanPerPekerja);
-                                            }
-                                        }),
-
-                                    Forms\Components\TextInput::make('pendapatan_per_pekerja')
-                                        ->label('Pendapatan Per Pekerja')
-                                        ->disabled()
-                                        ->dehydrated(false)
-                                        ->prefix('Rp')
-                                        ->numeric()
-                                        ->mask(fn($get) => $get('upah_bongkar') ? number_format($get('upah_bongkar') / max(1, count($get('pekerja_ids') ?? [])), 0, ',', '.') : '0'),
-                                ])
-                                ->columns(2),
-                        ])
-                        ->columnSpan(1),
-
-                ])
-                ->columns(3),
-
-            Forms\Components\Grid::make()
-                ->schema([
-                    // Panel Kiri - Detail Pembayaran
-                    Forms\Components\Section::make()
-                        ->schema([
-                            Forms\Components\Grid::make()
-                                ->schema([
-                                    Forms\Components\TextInput::make('hutang')
-                                        ->label('Total Hutang')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                                        ->prefix('Rp')
-                                        ->disabled()
-                                        ->dehydrated()
-                                        ->numeric()
-                                        ->default(0),
                                     Forms\Components\TextInput::make('bayar_hutang')
                                         ->label('Bayar Hutang')
-                                        ->default(0)
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
                                         // ->required()
@@ -251,8 +191,10 @@ class TransaksiDoResource extends Resource
                                         ->preserveFilenames()
                                         ->acceptedFileTypes(['application/pdf', 'image/*'])
                                         ->maxSize(5120),
+
+
                                 ])
-                                ->columns(3),
+                                ->columns(2),
                         ])
                         ->columnSpan(2),
 
@@ -261,16 +203,21 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\Grid::make()
                                 ->schema([
+                                    Forms\Components\TextInput::make('hutang')
+                                        ->label('Total Hutang')
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->prefix('Rp')
+                                        ->disabled()
+                                        ->dehydrated()
+                                        ->numeric()
+                                        ->default(0),
+
                                     Forms\Components\TextInput::make('sisa_hutang')
                                         ->label('Sisa Hutang')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->default(0)
                                         ->disabled()
-                                        ->dehydrated()
-                                        ->live(onBlur: true)
-                                        ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
-                                        static::hitungPembayaranHutang($state, $get, $set)),
+                                        ->dehydrated(),
 
                                     Forms\Components\TextInput::make('sisa_bayar')
                                         ->label('Sisa Bayar')
@@ -278,6 +225,7 @@ class TransaksiDoResource extends Resource
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->disabled()
                                         ->dehydrated(),
+
 
                                 ])
                                 ->columns(1),
@@ -294,31 +242,7 @@ class TransaksiDoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->headerActions([
-                CreateAction::make()
-                    ->label('Buat')
-                    ->icon('heroicon-m-plus')
-                    ->size('lg')
-                    ->color('secondary'),
-            ])
             ->columns([
-                Tables\Columns\TextColumn::make('file_do') //image file do
-                    ->label('File DO')
-                    ->tooltip('klik untuk melihat')
-                    ->alignCenter()
-                    ->icon('heroicon-m-document')
-                    ->color(Color::Emerald)
-                    ->formatStateUsing(fn($state) => $state ? 'Lihat' : '-')
-                    ->action(
-                        Action::make('previewFile')
-                            ->modalHeading('Preview File DO')
-                            ->modalWidth('4xl')
-                            ->modalContent(fn($record) => view(
-                                'filament.components.file-viewer',
-                                ['url' => Storage::url($record->file_do ?? '')]
-                            ))
-                    ),
-
                 Tables\Columns\TextColumn::make('nomor')
                     ->label('Nomor')
                     ->searchable()
@@ -334,6 +258,7 @@ class TransaksiDoResource extends Resource
                     ->badge()
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+
 
                 Tables\Columns\TextColumn::make('penjual.nama')
                     ->label('Penjual')
@@ -369,11 +294,6 @@ class TransaksiDoResource extends Resource
                             ->money('IDR')
                     ])
                     ->sortable(),
-                Tables\Columns\TextColumn::make('pekerjas.nama')
-                    ->label('Pekerja')
-                    ->badge()
-                    ->separator(',')
-                    ->color(Color::Blue),
 
                 Tables\Columns\TextColumn::make('upah_bongkar')
                     ->label('Upah Bongkar')
@@ -385,18 +305,9 @@ class TransaksiDoResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('biaya_lain')
-                    ->label('Biaya Lainnya')
-                    ->money('IDR')
-                    ->summarize([
-                        Tables\Columns\Summarizers\Sum::make()
-                            ->money('IDR')
-                    ])
-                    ->sortable(),
+                    ->label('Biaya Lain')
+                    ->money('IDR'),
 
-                Tables\Columns\TextColumn::make('keterangan_biaya_lain')
-                    ->label('Ket. Biaya Lain')
-                    ->searchable()
-                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('hutang')
                     ->label('Hutang')
@@ -439,7 +350,6 @@ class TransaksiDoResource extends Resource
                         default => 'gray',
                     }),
 
-
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
@@ -471,55 +381,110 @@ class TransaksiDoResource extends Resource
     // Helper methods untuk kalkulasi
     private static function hitungTotal($state, Forms\Get $get, Forms\Set $set): void
     {
-        // Ambil nilai tonase dan harga satuan
-        $tonase = str_replace(',', '', $get('tonase')) ?: 0;
-        $hargaSatuan = str_replace([',', 'Rp', ' '], '', $get('harga_satuan')) ?: 0;
+        $tonase = (int)$get('tonase');
+        $hargaSatuan = (int)$get('harga_satuan');
 
-        // Konversi ke integer/float untuk perhitungan
-        $tonase = (float)$tonase;
-        $hargaSatuan = (float)$hargaSatuan;
+        if ($tonase && $hargaSatuan) {
+            $total = $tonase * $hargaSatuan;
+            $set('total', $total);
 
-        // Hitung total
-        $total = $tonase * $hargaSatuan;
-
-        // Set nilai total
-        $set('total', $total);
-
-        // Hitung sisa bayar
-        $upahBongkar = (float)str_replace([',', 'Rp', ' '], '', $get('upah_bongkar')) ?: 0;
-        $biayaLain = (float)str_replace([',', 'Rp', ' '], '', $get('biaya_lain')) ?: 0;
-        $hutang = (float)str_replace([',', 'Rp', ' '], '', $get('hutang')) ?: 0;
-
-        $sisaBayar = $total - $upahBongkar - $biayaLain - $hutang;
-        $set('sisa_bayar', $sisaBayar);
+            // Ambil semua komponen pengurangan
+            $upahBongkar = (int)$get('upah_bongkar') ?? 0;
+            $biayaLain = (int)$get('biaya_lain') ?? 0;
+            $hutang = (int)$get('hutang') ?? 0;
+            // Hitung sisa bayar dengan memasukkan biaya lain
+            $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
+            $set('sisa_bayar', $sisaBayar);
+        }
     }
+
 
     private static function hitungSisaBayar($state, Forms\Get $get, Forms\Set $set): void
     {
         $total = (int)$get('total') ?? 0;
-        $hutang = (int)$get('hutang') ?? 0;
+        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
         $biayaLain = (int)$get('biaya_lain') ?? 0;
-        $sisaBayar = $total - (int)$state - $hutang - $biayaLain;
+        $bayarHutang = (int)$get('bayar_hutang') ?? 0;
+
+        // Hitung sisa bayar dengan semua komponen
+        $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
         $set('sisa_bayar', $sisaBayar);
     }
 
     private static function hitungPembayaranHutang($state, Forms\Get $get, Forms\Set $set): void
     {
         $hutang = (int)$get('hutang') ?? 0;
-        $total = (int)$get('total') ?? 0;
-        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
+        $bayarHutang = (int)$state ?? 0;
 
         // Validasi pembayaran tidak melebihi hutang
-        if ((int)$state > $hutang) {
+        if ($bayarHutang > $hutang) {
             $set('bayar_hutang', $hutang);
-            $state = $hutang;
+            $bayarHutang = $hutang;
         }
 
-        $sisaHutang = $hutang - (int)$state;
+        // Hitung sisa hutang
+        $sisaHutang = $hutang - $bayarHutang;
         $set('sisa_hutang', $sisaHutang);
 
-        $sisaBayar = $total - $upahBongkar - (int)$state;
+        // Hitung ulang sisa bayar dengan semua komponen
+        $total = (int)$get('total') ?? 0;
+        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
+        $biayaLain = (int)$get('biaya_lain') ?? 0;
+
+        $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
         $set('sisa_bayar', $sisaBayar);
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+
+        // Set default values untuk mencegah NULL
+        $defaults = [
+            'upah_bongkar' => 0,
+            'biaya_lain' => 0,
+            'bayar_hutang' => 0,
+            'hutang' => 0,
+            'total' => 0,
+        ];
+
+        $data = array_merge($defaults, $data);
+
+
+        // Hitung sisa hutang
+        $hutang = (int)str_replace(['.', ','], ['', '.'], $data['hutang'] ?? 0);
+        $bayarHutang = (int)str_replace(['.', ','], ['', '.'], $data['bayar_hutang'] ?? 0);
+        $data['sisa_hutang'] = $hutang - $bayarHutang;
+
+        // Format angka lainnya
+        $numericFields = [
+            'tonase',
+            'harga_satuan',
+            'total',
+            'upah_bongkar',
+            'biaya_lain',
+            'sisa_hutang',
+            'hutang',
+            'bayar_hutang',
+            'sisa_bayar'
+        ];
+
+        foreach ($numericFields as $field) {
+            if (isset($data[$field])) {
+                $data[$field] = (int)str_replace(['.', ','], ['', '.'], $data[$field]);
+            }
+        }
+        // Hitung total
+        if (isset($data['tonase']) && isset($data['harga_satuan'])) {
+            $data['total'] = $data['tonase'] * $data['harga_satuan'];
+        }
+
+        // Hitung sisa hutang
+        $data['sisa_hutang'] = $data['hutang'] - $data['bayar_hutang'];
+
+        // Hitung sisa bayar dengan semua komponen
+        $data['sisa_bayar'] = $data['total'] - $data['upah_bongkar'] - $data['biaya_lain'] - $data['bayar_hutang'];
+
+        return $data;
     }
 
     public static function getPages(): array
@@ -537,169 +502,5 @@ class TransaksiDoResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
-    }
-
-
-
-
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        // Set default values untuk memastikan tidak ada nilai NULL
-        $data = array_merge([
-            'nomor_polisi' => '',
-            'catatan' => '',
-            'bayar_hutang' => 0,
-            'hutang' => 0,
-            'sisa_hutang' => 0,
-            'sisa_bayar' => 0,
-            'upah_bongkar' => 0,
-            'biaya_lain' => 0,
-            'total' => 0, // tambahkan default total
-        ], $data);
-
-        // Hitung total jika tonase dan harga_satuan ada
-        if (isset($data['tonase']) && isset($data['harga_satuan'])) {
-            $tonase = (float)str_replace(['.', ','], ['', '.'], $data['tonase']);
-            $hargaSatuan = (float)str_replace(['.', ','], ['', '.'], $data['harga_satuan']);
-            $data['total'] = $tonase * $hargaSatuan;
-        }
-
-        // Clean numeric values
-        $numericFields = [
-            'tonase',
-            'harga_satuan',
-            'total',
-            'upah_bongkar',
-            'biaya_lain',
-            'hutang',
-            'bayar_hutang',
-            'sisa_hutang',
-            'sisa_bayar'
-        ];
-
-        foreach ($numericFields as $field) {
-            if (isset($data[$field])) {
-                // Remove thousand separators and convert decimal separator
-                $value = str_replace(['.', ','], ['', '.'], $data[$field]);
-                // Convert to integer, defaulting to 0 if empty
-                $data[$field] = $value !== '' ? (int)$value : 0;
-            }
-        }
-
-        // Calculate sisa_hutang
-        $hutang = $data['hutang'] ?? 0;
-        $bayarHutang = $data['bayar_hutang'] ?? 0;
-        $data['sisa_hutang'] = $hutang - $bayarHutang;
-
-        // Calculate sisa_bayar
-        $total = $data['total'] ?? 0;
-        $upahBongkar = $data['upah_bongkar'] ?? 0;
-        $biayaLain = $data['biaya_lain'] ?? 0;
-        $bayarHutang = $data['bayar_hutang'] ?? 0;
-        $data['sisa_bayar'] = $total - $upahBongkar - $biayaLain - $bayarHutang;
-
-        return $data;
-    }
-
-    public static function getModel(): string
-    {
-        return TransaksiDo::class;
-    }
-
-    protected function handleRecordCreation(array $data): Model
-    {
-        $record = static::getModel()::create($data);
-
-        if (isset($data['pekerja_ids']) && is_array($data['pekerja_ids']) && count($data['pekerja_ids']) > 0) {
-            $upahPerPekerja = $data['upah_bongkar'] / count($data['pekerja_ids']);
-
-            // Attach pekerja dengan pendapatan
-            foreach ($data['pekerja_ids'] as $pekerjaId) {
-                $record->pekerjas()->attach($pekerjaId, [
-                    'pendapatan_pekerja' => $upahPerPekerja
-                ]);
-
-                // Update total pendapatan pekerja
-                $pekerja = Pekerja::find($pekerjaId);
-                if ($pekerja) {
-                    $totalPendapatan = $pekerja->transaksiDos()
-                        ->whereNull('deleted_at')
-                        ->sum('pekerja_transaksi_do.pendapatan_pekerja');
-                    $pekerja->update(['pendapatan' => $totalPendapatan]);
-                }
-            }
-        }
-
-        return $record;
-    }
-
-    protected function handleRecordUpdate(Model $record, array $data): Model
-    {
-        // Rollback pendapatan lama
-        $record->pekerjas->each(function ($pekerja) use ($record) {
-            $pendapatanLama = $pekerja->pivot->pendapatan_pekerja;
-            $pekerja->decrement('pendapatan', $pendapatanLama);
-        });
-
-        // Update record
-        $record->update($data);
-
-        // Update pendapatan baru
-        if (isset($data['pekerja_ids']) && count($data['pekerja_ids']) > 0) {
-            $upahPerPekerja = $data['upah_bongkar'] / count($data['pekerja_ids']);
-
-            // Detach semua pekerja dulu
-            $record->pekerjas()->detach();
-
-            foreach ($data['pekerja_ids'] as $pekerjaId) {
-                $pekerja = Pekerja::find($pekerjaId);
-                if ($pekerja) {
-                    // Attach dengan data baru
-                    $record->pekerjas()->attach($pekerjaId, [
-                        'pendapatan_pekerja' => $upahPerPekerja
-                    ]);
-
-                    // Update total pendapatan
-                    $pekerja->increment('pendapatan', $upahPerPekerja);
-                }
-            }
-        }
-
-        return $record;
-    }
-
-    protected function handleRecordDeletion(Model $record): void
-    {
-        // Rollback pendapatan sebelum delete
-        $record->pekerjas->each(function ($pekerja) {
-            $pendapatan = $pekerja->pivot->pendapatan_pekerja;
-            $pekerja->decrement('pendapatan', $pendapatan);
-        });
-
-        $record->delete();
-    }
-
-    public function afterCreate(): void
-    {
-        // Update pendapatan pekerja
-        if (isset($this->record) && $this->record->pekerjas()->count() > 0) {
-            $upahPerPekerja = $this->record->upah_bongkar / $this->record->pekerjas()->count();
-
-            $this->record->pekerjas()->each(function ($pekerja) use ($upahPerPekerja) {
-                $pekerja->increment('pendapatan', $upahPerPekerja);
-            });
-        }
-    }
-
-    public function afterDelete(): void
-    {
-        // Rollback pendapatan pekerja
-        if (isset($this->record)) {
-            $upahPerPekerja = $this->record->upah_bongkar / max(1, $this->record->pekerjas()->count());
-
-            $this->record->pekerjas()->each(function ($pekerja) use ($upahPerPekerja) {
-                $pekerja->decrement('pendapatan', $upahPerPekerja);
-            });
-        }
     }
 }
