@@ -45,55 +45,95 @@ class PerusahaanResource extends Resource
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('nama')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('alamat')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('pimpinan')
-                    ->maxLength(255),
-                Forms\Components\Select::make('kasir_id')
-                    ->label('Kasir')
-                    ->relationship('user', 'name')
-                    ->preload()
-                    ->searchable(),
+        return $form->schema([
+            Grid::make(['default' => 1])
+                ->schema([
+                    Section::make('Informasi Dasar')
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('nama')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\FileUpload::make('logo_path')
+                                        ->label('Logo Perusahaan')
+                                        ->image()
+                                        ->directory('company-logos'),
+                                    Forms\Components\FileUpload::make('favicon_path')
+                                        ->label('Favicon')
+                                        ->image()
+                                        ->directory('company-favicons'),
+                                    Forms\Components\ColorPicker::make('tema_warna')
+                                        ->label('Warna Tema'),
+                                ]),
+                        ]),
 
-                Forms\Components\Toggle::make('is_active')
-                    ->required(),
+                    Section::make('Kontak & Alamat')
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('alamat')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('email')
+                                        ->email()
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('telepon')
+                                        ->tel()
+                                        ->maxLength(255),
+                                    // Forms\Components\TextInput::make('website')
+                                    //     ->url()
+                                    //     ->maxLength(255),
+                                ]),
+                        ]),
 
-            ]);
+                    Section::make('Informasi Bisnis')
+                        ->schema([
+                            Grid::make(2)
+                                ->schema([
+                                    Forms\Components\TextInput::make('pimpinan')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('npwp')
+                                        ->maxLength(30),
+                                    Forms\Components\TextInput::make('no_izin_usaha')
+                                        ->maxLength(50),
+                                    Forms\Components\Select::make('kasir_id')
+                                        ->label('Kasir')
+                                        ->relationship('kasir', 'name')
+                                        ->searchable()
+                                        ->preload()
+                                        ->placeholder('Pilih Kasir'),
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->required(),
+                                ]),
+                        ]),
+                ]),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('logo_path')
+                    ->label('Logo'),
                 Tables\Columns\TextColumn::make('nama')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('alamat')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('pimpinan')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('email')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('telepon')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('kasir.name')
+                    ->label('Kasir')
+                    ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('saldo')
                     ->money('IDR')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('user.name')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('dibuat pada')
-                    ->dateTime(Carbon::now('Asia/Jakarta'))
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->label('diperbarui pada')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('deleted_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

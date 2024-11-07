@@ -17,9 +17,9 @@ class KeuanganResource extends Resource
     protected static ?string $model = Keuangan::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'Laporan';
-    protected static ?string $navigationLabel = 'Laporan Keuangan';
-    protected static ?int $navigationSort = 1;
+    // protected static ?string $navigationGroup = 'Laporan';
+    protected static ?string $navigationLabel = 'Laporan Transaksi';
+    protected static ?int $navigationSort = 2;
     protected static bool $shouldRegisterNavigation = true;
 
     public static function table(Table $table): Table
