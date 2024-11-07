@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\PerusahaanResource\Pages;
 use Illuminate\Database\Eloquent\Factories\Relationship;
 use App\Filament\Resources\PerusahaanResource\RelationManagers;
+use Carbon\Carbon;
 
 class PerusahaanResource extends Resource
 {
@@ -58,16 +59,10 @@ class PerusahaanResource extends Resource
                     ->relationship('user', 'name')
                     ->preload()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('saldo')
-                    ->money('IDR')
-                    ->sortable()
-                    ->alignRight(),
+
                 Forms\Components\Toggle::make('is_active')
                     ->required(),
-                // Forms\Components\TextInput::make('created_by')
-                //     ->numeric(),
-                // Forms\Components\TextInput::make('updated_by')
-                //     ->numeric(),
+
             ]);
     }
 
@@ -89,20 +84,15 @@ class PerusahaanResource extends Resource
                     ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean(),
-                // Tables\Columns\TextColumn::make('created_by')
-                //     ->numeric()
-                //     ->sortable(),
-                // Tables\Columns\TextColumn::make('updated_by')
-                //     ->numeric()
-                //     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('dibuat pada')
+                    ->dateTime(Carbon::now('Asia/Jakarta'))
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->label('diperbarui pada')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('deleted_at')
                     ->dateTime()
                     ->sortable()

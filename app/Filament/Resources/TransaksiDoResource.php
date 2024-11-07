@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\TransaksiDoResource\Pages;
 use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDOWidget;
 use Filament\Tables\Columns\Summarizers\Count;
+use Filament\Support\Enums\IconPosition;
+use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Storage;
 
 class TransaksiDoResource extends Resource
 {
@@ -115,6 +118,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Harga Satuan')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->required()
+                                        ->default(0)
                                         ->prefix('Rp')
                                         ->numeric()
 
@@ -153,7 +157,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Upah Bongkar')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->required()
+                                        ->default(0)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
@@ -162,7 +166,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Biaya Lain')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
-                                        ->required()
+                                        ->default(0)
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
@@ -171,6 +175,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Bayar Hutang')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
+                                        ->default(0)
                                         // ->required()
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
@@ -216,6 +221,7 @@ class TransaksiDoResource extends Resource
                                         ->label('Sisa Hutang')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                                         ->prefix('Rp')
+                                        ->default(0)
                                         ->disabled()
                                         ->dehydrated(),
 
@@ -242,7 +248,25 @@ class TransaksiDoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+
             ->columns([
+                Tables\Columns\TextColumn::make('file_do') //image file do
+                    ->label('File DO')
+                    ->tooltip('klik untuk melihat')
+                    ->alignCenter()
+                    ->icon('heroicon-m-document')
+                    ->color(Color::Emerald)
+                    ->formatStateUsing(fn($state) => $state ? 'Lihat' : '-')
+                    ->action(
+                        Action::make('previewFile')
+                            ->modalHeading('Preview File DO')
+                            ->modalWidth('4xl')
+                            ->modalContent(fn($record) => view(
+                                'filament.components.file-viewer',
+                                ['url' => Storage::url($record->file_do ?? '')]
+                            ))
+                    ),
+
                 Tables\Columns\TextColumn::make('nomor')
                     ->label('Nomor')
                     ->searchable()
@@ -287,7 +311,7 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('IDR')
-                    ->color(Color::Emerald)
+                    ->color(Color::Amber)
                     ->weight('bold')
                     ->summarize([
                         Tables\Columns\Summarizers\Sum::make()
@@ -391,7 +415,8 @@ class TransaksiDoResource extends Resource
             // Ambil semua komponen pengurangan
             $upahBongkar = (int)$get('upah_bongkar') ?? 0;
             $biayaLain = (int)$get('biaya_lain') ?? 0;
-            $hutang = (int)$get('hutang') ?? 0;
+            $bayarHutang = (int)$get('bayar_hutang') ?? 0;  // Tambahkan ini
+
             // Hitung sisa bayar dengan memasukkan biaya lain
             $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
             $set('sisa_bayar', $sisaBayar);
