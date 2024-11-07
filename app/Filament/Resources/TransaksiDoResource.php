@@ -181,12 +181,21 @@ class TransaksiDoResource extends Resource
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungPembayaranHutang($state, $get, $set)),
                                     Forms\Components\Select::make('cara_bayar')
-                                        ->label('Metode Pembayaran')
+                                        ->label('Cara Bayar')
                                         ->options([
                                             'Tunai' => 'Tunai',
                                             'Transfer' => 'Transfer',
+                                            'Cair di Luar' => 'Cair di Luar',
                                         ])
                                         ->default('Tunai')
+                                        ->required(),
+                                    Forms\Components\Select::make('status_bayar')
+                                        ->label('Status Bayar')
+                                        ->options([
+                                            'Lunas' => 'Lunas',
+                                            'Belum Bayar' => 'Belum Bayar',
+                                        ])
+                                        ->default('Lunas')
                                         ->required(),
                                     Forms\Components\TextInput::make('catatan')
                                         ->label('Catatan'),
@@ -199,7 +208,7 @@ class TransaksiDoResource extends Resource
 
 
                                 ])
-                                ->columns(2),
+                                ->columns(3),
                         ])
                         ->columnSpan(2),
 
@@ -371,6 +380,15 @@ class TransaksiDoResource extends Resource
                     ->color(fn(string $state): string => match ($state) {
                         'Tunai' => 'success',
                         'Transfer' => 'info',
+                        default => 'gray',
+                    }),
+
+                Tables\Columns\TextColumn::make('status_bayar')
+                    ->label('Status Bayar')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Lunas' => 'success',
+                        'Belum Bayar' => 'warning',
                         default => 'gray',
                     }),
 

@@ -31,6 +31,7 @@ class TransaksiDo extends Model
         'sisa_bayar',
         'file_do',
         'cara_bayar',
+        'status_bayar',
         'catatan',
     ];
 
@@ -62,6 +63,8 @@ class TransaksiDo extends Model
         'bayar_hutang' => 0,
         'sisa_hutang' => 0,
         'sisa_bayar' => 0,
+        'status_bayar' => 'Belum Bayar',
+        'lunas' => 'lunas',
     ];
 
 
