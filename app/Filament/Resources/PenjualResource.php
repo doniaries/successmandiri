@@ -9,59 +9,19 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Support\RawJs;
 use Filament\Resources\Resource;
+use Illuminate\Support\Facades\DB;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\PenjualResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\PenjualResource\RelationManagers;
-use Pelmered\FilamentMoneyField\Tables\Columns\MoneyColumn;
-use Pelmered\FilamentMoneyField\Forms\Components\MoneyInput;
 
 class PenjualResource extends Resource
 {
     protected static ?string $model = Penjual::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
-
     protected static ?int $navigationSort = 2;
-
-    public static function getNavigationLabel(): string
-    {
-        return 'Data Penjual'; // Contoh untuk PenjualResource
-    }
-    public static function getPluralModelLabel(): string
-    {
-        return 'Data Penjual';
-    }
-
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        return 'primary';
-    }
-
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('nama')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('alamat')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('telepon')
-                    ->tel()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('hutang')
-                    ->disabled()
-                    ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2),
-
-            ]);
-    }
 
     public static function table(Table $table): Table
     {
@@ -77,28 +37,82 @@ class PenjualResource extends Resource
                     ->label('Hutang')
                     ->alignCenter()
                     ->badge()
+                    ->color(fn($state) => $state > 0 ? 'danger' : 'success')
                     ->money('IDR')
                     ->sortable(),
-
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('deleted_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('tambah_pinjaman')
+                    ->label('Tambah Pinjaman')
+                    ->icon('heroicon-o-banknotes')
+                    ->color('warning')
+                    ->form([
+                        Forms\Components\Grid::make(2)
+                            ->schema([
+                                Forms\Components\DatePicker::make('tanggal')
+                                    ->label('Tanggal')
+                                    ->default(now())
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('nominal')
+                                    ->label('Nominal Pinjaman')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->currencyMask(
+                                        thousandSeparator: ',',
+                                        decimalSeparator: '.',
+                                        precision: 2,
+                                    ),
+
+                                Forms\Components\Textarea::make('keterangan')
+                                    ->label('Keterangan')
+                                    ->columnSpanFull(),
+                            ]),
+                    ])
+                    ->action(function (array $data, Penjual $record): void {
+                        DB::beginTransaction();
+
+                        try {
+                            // Update hutang penjual
+                            $record->hutang += (float) str_replace([',', '.'], ['', '.'], $data['nominal']);
+                            $record->save();
+
+                            // Simpan ke tabel operasional
+                            DB::table('operasional')->insert([
+                                'tanggal' => $data['tanggal'],
+                                'operasional' => 'pinjaman',
+                                'atas_nama' => $record->nama,
+                                'nominal' => str_replace([',', '.'], ['', '.'], $data['nominal']),
+                                'keterangan' => $data['keterangan'],
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+
+                            DB::commit();
+
+                            Notification::make()
+                                ->title('Berhasil menambahkan pinjaman')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+
+                            Notification::make()
+                                ->title('Gagal menambahkan pinjaman')
+                                ->danger()
+                                ->body('Error: ' . $e->getMessage())
+                                ->send();
+                        }
+                    })
+                    ->modalHeading('Tambah Pinjaman Baru')
+                    ->modalDescription(fn(Penjual $record) => "Menambahkan pinjaman untuk {$record->nama}")
+                    ->modalSubmitActionLabel('Simpan Pinjaman')
+                    ->requiresConfirmation(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -108,6 +122,7 @@ class PenjualResource extends Resource
                 ]),
             ]);
     }
+
 
     public static function getRelations(): array
     {
