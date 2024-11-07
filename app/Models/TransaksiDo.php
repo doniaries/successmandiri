@@ -53,6 +53,8 @@ class TransaksiDo extends Model
         'bayar_hutang' => 'integer',
         'sisa_hutang' => 'integer',
         'sisa_bayar' => 'integer',
+        'status_bayar' => 'string',
+
     ];
 
     protected $attributes = [
@@ -64,7 +66,7 @@ class TransaksiDo extends Model
         'sisa_hutang' => 0,
         'sisa_bayar' => 0,
         'status_bayar' => 'Belum Bayar',
-        'lunas' => 'lunas',
+        'status_bayar' => 'Sudah Bayar',
     ];
 
 

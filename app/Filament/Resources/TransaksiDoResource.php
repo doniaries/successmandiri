@@ -91,6 +91,7 @@ class TransaksiDoResource extends Resource
                                 ->required(),
 
                             Forms\Components\TextInput::make('nomor_polisi')
+                                ->placeholder('BA 1234 K')
                                 ->label('Nomor Polisi'),
                         ])
                         ->columns(2),
@@ -192,10 +193,10 @@ class TransaksiDoResource extends Resource
                                     Forms\Components\Select::make('status_bayar')
                                         ->label('Status Bayar')
                                         ->options([
-                                            'Lunas' => 'Lunas',
+                                            'Sudah Bayar' => 'Sudah Bayar',
                                             'Belum Bayar' => 'Belum Bayar',
                                         ])
-                                        ->default('Lunas')
+                                        ->default('Sudah Bayar')
                                         ->required(),
                                     Forms\Components\TextInput::make('catatan')
                                         ->label('Catatan'),
@@ -387,7 +388,7 @@ class TransaksiDoResource extends Resource
                     ->label('Status Bayar')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'Lunas' => 'success',
+                        'Sudah Bayar' => 'success',
                         'Belum Bayar' => 'warning',
                         default => 'gray',
                     }),
