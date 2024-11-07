@@ -75,33 +75,33 @@ class TransaksiWidget extends BaseWidget
                 ->chart([5, 12, 7, 9, 14, 3, 8])
                 ->chartColor('warning'),
 
-            Stat::make('Total Transaksi Bulan Ini', $totalTransaksiBulanIni)
-                ->description('Periode ' . Carbon::now()->format('F Y'))
-                ->descriptionIcon('heroicon-m-clipboard-document-list')
-                ->color('primary')
-                ->chart([8, 15, 4, 12, 9, 16, 5])
-                ->chartColor('primary'),
+            // Stat::make('Total Transaksi Bulan Ini', $totalTransaksiBulanIni)
+            //     ->description('Periode ' . Carbon::now()->format('F Y'))
+            //     ->descriptionIcon('heroicon-m-clipboard-document-list')
+            //     ->color('primary')
+            //     ->chart([8, 15, 4, 12, 9, 16, 5])
+            //     ->chartColor('primary'),
 
-            Stat::make('Total Sawit Masuk Bulan Ini', number_format($totalSawitBulanIni, 0, ',', '.') . ' Kg')
-                ->description('Periode ' . Carbon::now()->format('F Y'))
-                ->descriptionIcon('heroicon-m-scale')
-                ->chart($monthlyChartData)
-                ->chartColor('success')
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all hover:scale-105 hover:shadow-lg rounded-lg',
-                    'style' => 'transition-duration: 500ms;'
+            // Stat::make('Total Sawit Masuk Bulan Ini', number_format($totalSawitBulanIni, 0, ',', '.') . ' Kg')
+            //     ->description('Periode ' . Carbon::now()->format('F Y'))
+            //     ->descriptionIcon('heroicon-m-scale')
+            //     ->chart($monthlyChartData)
+            //     ->chartColor('success')
+            //     ->extraAttributes([
+            //         'class' => 'cursor-pointer transition-all hover:scale-105 hover:shadow-lg rounded-lg',
+            //         'style' => 'transition-duration: 500ms;'
 
-                ])
-                ->color('success'),
+            //     ])
+            //     ->color('success'),
 
-            Stat::make('Total Sawit Masuk Hari Ini', number_format($totalSawitHariIni, 0, ',', '.') . ' Kg')
-                ->description('Tanggal ' . Carbon::today()->format('d F Y'))
-                ->descriptionIcon('heroicon-m-scale')
-                ->chart($chartData)
-                ->chartColor('success')
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all hover:scale-105',
-                ]),
+            // Stat::make('Total Sawit Masuk Hari Ini', number_format($totalSawitHariIni, 0, ',', '.') . ' Kg')
+            //     ->description('Tanggal ' . Carbon::today()->format('d F Y'))
+            //     ->descriptionIcon('heroicon-m-scale')
+            //     ->chart($chartData)
+            //     ->chartColor('success')
+            //     ->extraAttributes([
+            //         'class' => 'cursor-pointer transition-all hover:scale-105',
+            //     ]),
         ];
     }
 

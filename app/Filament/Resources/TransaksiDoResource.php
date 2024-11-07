@@ -59,40 +59,6 @@ class TransaksiDoResource extends Resource
                                 ->required()
                                 ->dehydrated(),
 
-                            Forms\Components\Select::make('penjual_id')
-                                ->label('Penjual')
-                                ->placeholder('Pilih Nama Penjual')
-                                ->relationship('penjual', 'nama')
-                                ->searchable()
-                                ->preload()
-                                ->hint('Tambahkan Penjual Baru')
-                                ->hintIcon('heroicon-m-arrow-down-circle')
-                                ->hintColor('primary')
-                                ->createOptionForm([
-                                    Forms\Components\TextInput::make('nama')
-                                        ->required()
-                                        ->label('Nama'),
-                                    Forms\Components\TextInput::make('alamat')
-                                        ->required()
-                                        ->label('Alamat'),
-                                    Forms\Components\TextInput::make('telepon')
-                                        ->required()
-                                        ->label('Telepon/HP'),
-                                ])
-                                ->live()
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                    if ($state) {
-                                        $hutang = Penjual::find($state)?->hutang ?? 0;
-                                        $set('hutang', $hutang);
-                                    } else {
-                                        $set('hutang', 0);
-                                    }
-                                })
-                                ->required(),
-
-                            Forms\Components\TextInput::make('nomor_polisi')
-                                ->placeholder('BA 1234 K')
-                                ->label('Nomor Polisi'),
                         ])
                         ->columns(2),
                 ])
@@ -106,6 +72,40 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\Grid::make()
                                 ->schema([
+                                    Forms\Components\Select::make('penjual_id')
+                                        ->label('Penjual')
+                                        ->placeholder('Pilih Nama Penjual')
+                                        ->relationship('penjual', 'nama')
+                                        ->searchable()
+                                        ->preload()
+                                        ->hint('Tambahkan Penjual Baru')
+                                        ->hintIcon('heroicon-m-arrow-down-circle')
+                                        ->hintColor('primary')
+                                        ->createOptionForm([
+                                            Forms\Components\TextInput::make('nama')
+                                                ->required()
+                                                ->label('Nama'),
+                                            Forms\Components\TextInput::make('alamat')
+                                                ->required()
+                                                ->label('Alamat'),
+                                            Forms\Components\TextInput::make('telepon')
+                                                ->required()
+                                                ->label('Telepon/HP'),
+                                        ])
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                            if ($state) {
+                                                $hutang = Penjual::find($state)?->hutang ?? 0;
+                                                $set('hutang', $hutang);
+                                            } else {
+                                                $set('hutang', 0);
+                                            }
+                                        })
+                                        ->required(),
+
+                                    Forms\Components\TextInput::make('nomor_polisi')
+                                        ->placeholder('BA 1234 K')
+                                        ->label('Nomor Polisi'),
                                     Forms\Components\TextInput::make('tonase')
                                         ->label('Tonase (Netto)')
                                         ->required()
@@ -138,6 +138,7 @@ class TransaksiDoResource extends Resource
                                 ->label('Sub Total')
                                 ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                 ->prefix('Rp')
+                                ->extraAttributes(['class' => 'text-xl font-bold text-primary-600'])
                                 ->disabled()
                                 ->dehydrated(),
                         ])
@@ -193,10 +194,10 @@ class TransaksiDoResource extends Resource
                                     Forms\Components\Select::make('status_bayar')
                                         ->label('Status Bayar')
                                         ->options([
-                                            'Sudah Bayar' => 'Sudah Bayar',
-                                            'Belum Bayar' => 'Belum Bayar',
+                                            'Lunas' => 'Lunas',
+                                            'Belum Lunas' => 'Belum Lunas',
                                         ])
-                                        ->default('Sudah Bayar')
+                                        // ->default('Lunas')
                                         ->required(),
                                     Forms\Components\TextInput::make('catatan')
                                         ->label('Catatan'),
@@ -388,8 +389,8 @@ class TransaksiDoResource extends Resource
                     ->label('Status Bayar')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'Sudah Bayar' => 'success',
-                        'Belum Bayar' => 'warning',
+                        'Lunas' => 'success',
+                        'Belum Lunas' => 'warning',
                         default => 'gray',
                     }),
 

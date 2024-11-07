@@ -65,8 +65,8 @@ class TransaksiDo extends Model
         'bayar_hutang' => 0,
         'sisa_hutang' => 0,
         'sisa_bayar' => 0,
-        'status_bayar' => 'Belum Bayar',
-        'status_bayar' => 'Sudah Bayar',
+        'status_bayar' => 'Belum Lunas',
+        'status_bayar' => 'Lunas',
     ];
 
 
