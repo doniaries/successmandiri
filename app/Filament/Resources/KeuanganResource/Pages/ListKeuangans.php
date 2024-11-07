@@ -23,7 +23,7 @@ class ListKeuangans extends ListRecords
     {
         return [
             KeuanganResource\Widgets\KeuanganStatsWidget::class,
-            KeuanganResource\Widgets\KeuanganChartWidget::class,
+            // KeuanganResource\Widgets\KeuanganChartWidget::class,
         ];
     }
 

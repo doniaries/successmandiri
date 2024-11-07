@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\KeuanganResource\Widgets;
+namespace App\Filament\Widgets;
 
 use App\Models\Keuangan;
 use Filament\Widgets\ChartWidget;

@@ -4,72 +4,121 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Keuangan extends Model
 {
-    protected $table = 'combined_keuangan_view';
-    public $timestamps = false;
-    protected $primaryKey = 'unique_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    use SoftDeletes;
 
-    protected static function booted()
+    protected $table = 'keuangans';
+
+    protected $fillable = [
+        'tanggal',
+        'jenis', // enum: pemasukan/pengeluaran
+        'kategori', // enum: transaksi_do, bayar_hutang, transfer_masuk, lainnya
+        'referensi_id',
+        'keterangan',
+        'nominal',
+        'created_by',
+    ];
+
+    protected $casts = [
+        'tanggal' => 'datetime',
+        'nominal' => 'decimal:0',
+    ];
+
+    // Relations
+    public function creator()
     {
-        static::addGlobalScope('base_query', function ($query) {
-            return $query->from(DB::raw('(' . self::baseQuery()->toSql() . ') as combined_keuangan_view'))
-                ->mergeBindings(self::baseQuery());
-        });
+        return $this->belongsTo(User::class, 'created_by');
     }
 
-    public static function baseQuery()
+    public function transaksiDo()
     {
-        // Query untuk TransaksiDo
-        $transactionQuery = DB::table('transaksi_do')
-            ->join('penjuals', 'transaksi_do.penjual_id', '=', 'penjuals.id')
-            ->whereNull('transaksi_do.deleted_at')
-            ->select([
-                DB::raw("CONCAT('TRX-', transaksi_do.id) as unique_id"),
-                'transaksi_do.tanggal',
-                DB::raw("'transaksi_do' as sumber"),
-                DB::raw("CASE
-                    WHEN transaksi_do.sisa_bayar > 0 THEN 'pemasukan'
-                    ELSE 'pengeluaran'
-                END as jenis"),
-                'transaksi_do.total as nominal',
-                DB::raw("CONCAT('Transaksi DO - ', penjuals.nama) as keterangan"),
-                'transaksi_do.created_at'
-            ]);
+        return $this->belongsTo(TransaksiDo::class, 'referensi_id')
+            ->where('kategori', 'transaksi_do');
+    }
 
-        // Query untuk Operasional
-        $operationalQuery = DB::table('operasional')
-            ->whereNull('deleted_at')
-            ->select([
-                DB::raw("CONCAT('OPR-', operasional.id) as unique_id"),
-                'tanggal',
-                DB::raw("'operasional' as sumber"),
-                DB::raw("CASE
-                    WHEN operasional = 'pinjaman' THEN 'pengeluaran'
-                    WHEN operasional = 'bayar_hutang' THEN 'pemasukan'
-                    WHEN operasional = 'isi_saldo' THEN 'pemasukan'
-                    ELSE 'pengeluaran'
-                END as jenis"),
-                'nominal',
-                DB::raw("CONCAT(
-                    CASE
-                        WHEN operasional = 'isi_saldo' THEN 'Penambahan Saldo - '
-                        WHEN operasional = 'pinjaman' THEN 'Pinjaman - '
-                        WHEN operasional = 'bayar_hutang' THEN 'Pembayaran Hutang - '
-                        WHEN operasional = 'bahan_bakar' THEN 'Bahan Bakar - '
-                        WHEN operasional = 'transportasi' THEN 'Transportasi - '
-                        WHEN operasional = 'perawatan' THEN 'Perawatan - '
-                        WHEN operasional = 'gaji' THEN 'Gaji - '
-                        ELSE CONCAT(UPPER(SUBSTRING(operasional, 1, 1)), LOWER(SUBSTRING(operasional, 2)), ' - ')
-                    END,
-                    atas_nama
-                ) as keterangan"),
-                'created_at'
-            ]);
+    // Scopes untuk reporting
+    public function scopePemasukan($query)
+    {
+        return $query->where('jenis', 'pemasukan');
+    }
 
-        return $transactionQuery->unionAll($operationalQuery);
+    public function scopePengeluaran($query)
+    {
+        return $query->where('jenis', 'pengeluaran');
+    }
+
+    public function scopeKategori($query, $kategori)
+    {
+        return $query->where('kategori', $kategori);
+    }
+
+    public function scopePeriode($query, $start, $end)
+    {
+        return $query->whereBetween('tanggal', [$start, $end]);
+    }
+
+    // Method untuk menghitung saldo
+    public static function getSaldo()
+    {
+        $pemasukan = static::pemasukan()->sum('nominal');
+        $pengeluaran = static::pengeluaran()->sum('nominal');
+        return $pemasukan - $pengeluaran;
+    }
+
+    public static function getSaldoAtDate($date)
+    {
+        $pemasukan = static::pemasukan()
+            ->where('tanggal', '<=', $date)
+            ->sum('nominal');
+
+        $pengeluaran = static::pengeluaran()
+            ->where('tanggal', '<=', $date)
+            ->sum('nominal');
+
+        return $pemasukan - $pengeluaran;
+    }
+
+    // Method untuk mencatat transaksi DO
+    public static function catatTransaksiDO(TransaksiDo $transaksiDo)
+    {
+        // 1. Jika transfer, catat pemasukan ke saldo
+        if ($transaksiDo->cara_bayar === 'Transfer') {
+            static::create([
+                'tanggal' => $transaksiDo->tanggal,
+                'jenis' => 'pemasukan',
+                'kategori' => 'transfer_masuk',
+                'referensi_id' => $transaksiDo->id,
+                'nominal' => $transaksiDo->sisa_bayar,
+                'keterangan' => "Transfer masuk DO #{$transaksiDo->nomor}",
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        // 2. Catat pengeluaran DO
+        static::create([
+            'tanggal' => $transaksiDo->tanggal,
+            'jenis' => 'pengeluaran',
+            'kategori' => 'transaksi_do',
+            'referensi_id' => $transaksiDo->id,
+            'nominal' => $transaksiDo->sisa_bayar,
+            'keterangan' => "Pembayaran DO #{$transaksiDo->nomor} via {$transaksiDo->cara_bayar}",
+            'created_by' => auth()->id(),
+        ]);
+
+        // 3. Jika ada pembayaran hutang, catat sebagai pemasukan
+        if ($transaksiDo->bayar_hutang > 0) {
+            static::create([
+                'tanggal' => $transaksiDo->tanggal,
+                'jenis' => 'pemasukan',
+                'kategori' => 'bayar_hutang',
+                'referensi_id' => $transaksiDo->id,
+                'nominal' => $transaksiDo->bayar_hutang,
+                'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}",
+                'created_by' => auth()->id(),
+            ]);
+        }
     }
 }
