@@ -55,7 +55,7 @@ class TransaksiDoResource extends Resource
                                 ->timezone('Asia/Jakarta')
                                 ->displayFormat('d/m/Y H:i')
                                 ->default(now())
-                                // ->disabled()
+                                ->disabled()
                                 ->required()
                                 ->dehydrated(),
 

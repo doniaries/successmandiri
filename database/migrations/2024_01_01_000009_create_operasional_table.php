@@ -15,12 +15,8 @@ return new class extends Migration
             $table->id();
             $table->date('tanggal')->index();
             $table->enum('operasional', [
-                'bahan_bakar',
-                'transportasi',
-                'perawatan',
-                'gaji',
-                'pinjaman',
-                'isi_saldo'
+                'pemasukan',
+                'pengeluaran',
             ])->index();
             $table->string('atas_nama')->index();
             $table->decimal('nominal', 15, 0)->index();

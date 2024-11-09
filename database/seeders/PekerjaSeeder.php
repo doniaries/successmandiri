@@ -18,14 +18,14 @@ class PekerjaSeeder extends Seeder
                 'alamat' => 'Jl. Pekerja No. 1',
                 'telepon' => '081234567890',
                 'pendapatan' => 0,
-                'hutang' => 0,
+                'hutang' => 1000000,
             ],
             [
                 'nama' => 'Budi Setiawan',
                 'alamat' => 'Jl. Pekerja No. 2',
                 'telepon' => '081234567891',
                 'pendapatan' => 0,
-                'hutang' => 0,
+                'hutang' => 2000000,
             ],
             [
                 'nama' => 'Candra Wijaya',
@@ -39,14 +39,14 @@ class PekerjaSeeder extends Seeder
                 'alamat' => 'Jl. Pekerja No. 4',
                 'telepon' => '081234567893',
                 'pendapatan' => 0,
-                'hutang' => 0,
+                'hutang' => 2000000,
             ],
             [
                 'nama' => 'Eko Prasetyo',
                 'alamat' => 'Jl. Pekerja No. 5',
                 'telepon' => '081234567894',
                 'pendapatan' => 0,
-                'hutang' => 0,
+                'hutang' => 500000,
             ],
         ];
 

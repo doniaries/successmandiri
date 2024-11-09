@@ -31,23 +31,92 @@ class OperasionalResource extends Resource
             ->schema([
                 Forms\Components\Section::make()
                     ->schema([
-                        Forms\Components\DatePicker::make('tanggal')
-                            ->required()
+                        Forms\Components\DateTimePicker::make('tanggal')
+                            ->label('Tanggal')
+                            ->timezone('Asia/Jakarta')
+                            ->displayFormat('d/m/Y H:i')
                             ->default(now())
-                            ->format('d/m/Y')
-                            ->columnSpan(1),
+                            ->required(),
 
                         Forms\Components\Select::make('operasional')
                             ->label('Jenis Operasional')
                             ->options(Operasional::JENIS_OPERASIONAL)
                             ->required()
                             ->native(false)
-                            ->columnSpan(1),
+                            ->live(),
 
-                        Forms\Components\TextInput::make('atas_nama')
+                        Forms\Components\Select::make('kategori_id')
+                            ->label('Kategori')
+                            ->relationship(
+                                name: 'kategori',
+                                titleAttribute: 'nama',
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('nama')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('keterangan')
+                                    ->maxLength(255),
+                            ])
+                            ->required(),
+
+                        Forms\Components\Select::make('tipe_nama')
+                            ->label('Tipe')
+                            ->options([
+                                'penjual' => 'Penjual',
+                                'pekerja' => 'Pekerja',
+                                'user' => 'User/Kasir'
+                            ])
                             ->required()
-                            ->maxLength(255)
-                            ->columnSpan(2),
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                $set('penjual_id', null);
+                                $set('pekerja_id', null);
+                                $set('user_id', null);
+                            }),
+
+                        Forms\Components\Select::make('penjual_id')
+                            ->label('Nama Penjual')
+                            ->relationship('penjual', 'nama')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('nama')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('alamat')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('telepon')
+                                    ->maxLength(255),
+                            ])
+                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual'),
+
+                        // Select untuk Pekerja dengan create option
+                        Forms\Components\Select::make('pekerja_id')
+                            ->label('Nama Pekerja')
+                            ->relationship('pekerja', 'nama')
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('nama')
+                                    ->required()
+                                    ->label('Nama'),
+                                Forms\Components\TextInput::make('alamat')
+                                    ->label('Alamat'),
+                                Forms\Components\TextInput::make('telepon')
+                                    ->label('Telepon/HP'),
+                            ])
+                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja'),
+
+                        // Select untuk User
+                        Forms\Components\Select::make('user_id')
+                            ->label('Nama User/Kasir')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user'),
 
                         Forms\Components\TextInput::make('nominal')
                             ->required()
@@ -57,22 +126,20 @@ class OperasionalResource extends Resource
                                 thousandSeparator: '.',
                                 decimalSeparator: ',',
                                 precision: 0,
-                            )
-                            ->columnSpan(1),
+                            ),
 
-                        Forms\Components\Textarea::make('keterangan')
-                            ->maxLength(65535)
-                            ->columnSpan(2),
+                        Forms\Components\TextInput::make('keterangan')
+                            ->maxLength(255)
+                            ->required(),
 
                         Forms\Components\FileUpload::make('file_bukti')
                             ->label('Upload Bukti')
                             ->directory('bukti-operasional')
-                            ->image() // Hanya menerima gambar
+                            ->image()
                             ->imagePreviewHeight('250')
-                            ->maxSize(2048)
-                            ->columnSpan(2),
+                            ->maxSize(2048),
                     ])
-                    ->columns(2)
+                    ->columns(3)
             ]);
     }
 
@@ -90,26 +157,40 @@ class OperasionalResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn(string $state): string => Operasional::JENIS_OPERASIONAL[$state])
                     ->color(fn(string $state): string => match ($state) {
-                        'bahan_bakar' => 'danger',
-                        'transportasi' => 'warning',
-                        'perawatan' => 'info',
-                        'gaji' => 'success',
-                        'pinjaman' => 'gray',
-                        'isi_saldo' => 'primary',
+                        'pengeluaran' => 'danger',
+                        'pemasukan' => 'warning',
                         default => 'gray',
                     }),
 
-                Tables\Columns\TextColumn::make('atas_nama')
-                    ->searchable()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('tipe_nama')
+                    ->label('Tipe')
+                    ->badge(),
+
+                Tables\Columns\TextColumn::make('nama')
+                    ->label('Nama')
+                    ->formatStateUsing(function (Model $record) {
+                        return match ($record->tipe_nama) {
+                            'penjual' => $record->penjual?->nama,
+                            'pekerja' => $record->pekerja?->nama,
+                            'user' => $record->user?->name,
+                            default => '-'
+                        };
+                    })
+                    ->searchable(query: function (Builder $query, string $search) {
+                        return $query->where(function ($query) use ($search) {
+                            $query->whereHas('penjual', fn($q) => $q->where('nama', 'like', "%{$search}%"))
+                                ->orWhereHas('pekerja', fn($q) => $q->where('nama', 'like', "%{$search}%"))
+                                ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                        });
+                    }),
 
                 Tables\Columns\TextColumn::make('nominal')
                     ->money('IDR')
                     ->alignment('right')
                     ->sortable()
                     ->color(
-                        fn(string $state, Operasional $record): string =>
-                        $record->operasional === 'isi_saldo' ? 'success' : 'danger'
+                        fn(string $state, Model $record): string =>
+                        $record->operasional === 'pemasukan' ? 'success' : 'danger'
                     )
                     ->weight('bold')
                     ->summarize([
@@ -121,11 +202,11 @@ class OperasionalResource extends Resource
                     ->limit(30)
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('file_bukti')
+                Tables\Columns\ImageColumn::make('file_bukti')
                     ->label('Bukti')
-                    ->view('filament.tables.columns.preview-file')
-                    ->alignCenter()
-                    ->disableClick(), // Ini penting untuk mencegah redirect ke halaman edit
+                    ->circular()
+                    ->defaultImageUrl(url('/images/placeholder.png'))
+                    ->alignCenter(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime('d/m/Y H:i')

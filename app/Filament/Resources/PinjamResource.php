@@ -29,6 +29,7 @@ class PinjamResource extends Resource
     protected static ?string $modelLabel = 'Data Pinjaman';
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?int $navigationSort = 4;
+    protected static bool $shouldRegisterNavigation = false; //disable tombol navigasi
 
     public static function form(Form $form): Form
     {

@@ -2,14 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Penjual;
 
 class PenjualSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $penjuals = [
@@ -17,36 +14,24 @@ class PenjualSeeder extends Seeder
                 'nama' => 'Budi',
                 'alamat' => 'Jl. Supplier No. 1',
                 'telepon' => '081345678901',
-                'hutang' => 0,
+                'hutang' => 500000
             ],
             [
                 'nama' => 'Dudung',
                 'alamat' => 'Jl. Distributor No. 2',
                 'telepon' => '081345678902',
-                'hutang' => 0,
+                'hutang' => 2000000
             ],
             [
-                'nama' => 'wahyudi',
+                'nama' => 'Wahyudi',
                 'alamat' => 'Jl. Mitra No. 3',
                 'telepon' => '081345678903',
-                'hutang' => 0,
-            ],
-            [
-                'nama' => 'Toni',
-                'alamat' => 'Jl. Partner No. 4',
-                'telepon' => '081345678904',
-                'hutang' => 0,
-            ],
-            [
-                'nama' => 'maman',
-                'alamat' => 'Jl. Vendor No. 5',
-                'telepon' => '081345678905',
-                'hutang' => 0,
+                'hutang' => 0
             ],
         ];
 
         foreach ($penjuals as $penjual) {
-            \App\Models\Penjual::create($penjual);
+            Penjual::create($penjual);
         }
     }
 }
