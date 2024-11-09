@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OperasionalResource\Pages;
 use App\Filament\Resources\OperasionalResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
 
 class EditOperasional extends EditRecord
 {
@@ -24,4 +25,35 @@ class EditOperasional extends EditRecord
     {
         return $this->getResource()::getUrl('index');
     }
+
+    protected function afterSave(): void
+    {
+        if (
+            $this->record->operasional === 'pengeluaran' &&
+            $this->record->kategori?->nama === 'Pinjaman'
+        ) {
+            Notification::make()
+                ->title('Hutang berhasil diperbarui')
+                ->success()
+                ->send();
+        }
+    }
+
+    // protected function getHeaderActions(): array
+    // {
+    //     return [
+    //         Actions\DeleteAction::make()
+    //             ->after(function () {
+    //                 if (
+    //                     $this->record->operasional === 'pengeluaran' &&
+    //                     $this->record->kategori?->nama === 'Pinjaman'
+    //                 ) {
+    //                     Notification::make()
+    //                         ->title('Hutang berhasil dihapus')
+    //                         ->success()
+    //                         ->send();
+    //                 }
+    //             }),
+    //     ];
+    // }
 }

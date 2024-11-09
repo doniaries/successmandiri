@@ -43,7 +43,12 @@ class OperasionalResource extends Resource
                             ->options(Operasional::JENIS_OPERASIONAL)
                             ->required()
                             ->native(false)
-                            ->live(),
+                            ->live()
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state === 'pemasukan') {
+                                    $set('kategori_id', null);
+                                }
+                            }),
 
                         Forms\Components\Select::make('kategori_id')
                             ->label('Kategori')
@@ -60,6 +65,7 @@ class OperasionalResource extends Resource
                                 Forms\Components\TextInput::make('keterangan')
                                     ->maxLength(255),
                             ])
+                            ->visible(fn(Forms\Get $get) => $get('operasional') === 'pengeluaran')
                             ->required(),
 
                         Forms\Components\Select::make('tipe_nama')
@@ -129,8 +135,7 @@ class OperasionalResource extends Resource
                             ),
 
                         Forms\Components\TextInput::make('keterangan')
-                            ->maxLength(255)
-                            ->required(),
+                            ->maxLength(255),
 
                         Forms\Components\FileUpload::make('file_bukti')
                             ->label('Upload Bukti')
@@ -161,7 +166,10 @@ class OperasionalResource extends Resource
                         'pemasukan' => 'warning',
                         default => 'gray',
                     }),
-
+                Tables\Columns\TextColumn::make('kategori.nama')
+                    ->label('Kategori')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('tipe_nama')
                     ->label('Tipe')
                     ->badge(),
@@ -227,7 +235,12 @@ class OperasionalResource extends Resource
                     ])
                     ->multiple()
                     ->indicator('Jenis'),
-
+                SelectFilter::make('kategori_id')
+                    ->label('Kategori')
+                    ->relationship('kategori', 'nama')
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
                 Filter::make('tanggal')
                     ->form([
                         Forms\Components\Grid::make(2)
