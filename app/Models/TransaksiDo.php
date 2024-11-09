@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Hugomyb\FilamentMediaAction\Models\Media;
 use App\Traits\GenerateMonthlyNumber;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TransaksiDo extends Model
 {
@@ -179,5 +180,10 @@ class TransaksiDo extends Model
             // Hapus relasi di pivot table
             $transaksiDo->pekerjas()->detach();
         });
+    }
+
+    public function operasional(): HasMany
+    {
+        return $this->hasMany(Operasional::class, 'penjual_id', 'penjual_id');
     }
 }

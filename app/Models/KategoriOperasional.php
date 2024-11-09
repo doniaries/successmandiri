@@ -14,14 +14,19 @@ class KategoriOperasional extends Model
 
     protected $fillable = [
         'nama',
+        'jenis',
         'keterangan',
-        'is_active'
     ];
 
     protected $casts = [
         'is_active' => 'boolean'
     ];
 
+
+    const JENIS_KATEGORI = [
+        'pengeluaran' => 'Pengeluaran',
+        'pemasukan' => 'Pemasukan'
+    ];
     public function operasional()
     {
         return $this->hasMany(Operasional::class, 'kategori_id');

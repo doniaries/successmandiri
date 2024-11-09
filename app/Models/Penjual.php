@@ -19,4 +19,10 @@ class Penjual extends Model
     protected $casts = [
         'hutang' => 'decimal:0',
     ];
+
+    public function riwayatHutang()
+    {
+        return $this->hasMany(RiwayatHutang::class, 'entitas_id')
+            ->where('tipe_entitas', 'penjual');
+    }
 }

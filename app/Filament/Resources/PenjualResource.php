@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\PenjualResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\PenjualResource\RelationManagers;
+use Filament\Resources\RelationManagers\RelationManager;
 
 class PenjualResource extends Resource
 {
@@ -23,6 +24,44 @@ class PenjualResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-users';
     // protected static ?string $navigationGroup = 'Master Data';
     protected static ?int $navigationSort = 2;
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make()
+                    ->schema([
+                        Forms\Components\TextInput::make('nama')
+                            ->label('Nama Penjual')
+                            ->required()
+                            ->maxLength(255),
+
+                        Forms\Components\TextInput::make('alamat')
+                            ->label('Alamat')
+                            ->maxLength(255),
+
+                        Forms\Components\TextInput::make('telepon')
+                            ->label('Nomor Telepon/HP')
+                            ->tel()
+                            ->maxLength(255),
+
+                        Forms\Components\TextInput::make('hutang')
+                            ->label('Hutang')
+                            ->disabled()
+                            ->dehydrated()
+                            ->prefix('Rp.')
+                            ->numeric()
+                            ->default(0)
+                            ->currencyMask(
+                                thousandSeparator: ',',
+                                decimalSeparator: '.',
+                                precision: 0
+                            ),
+                    ])
+                    ->columns(2)
+            ]);
+    }
+
 
     public static function table(Table $table): Table
     {
@@ -128,7 +167,7 @@ class PenjualResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\RiwayatHutangRelationManager::class,
         ];
     }
 

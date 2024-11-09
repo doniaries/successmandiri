@@ -8,13 +8,15 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\Operasional;
 use Filament\Resources\Resource;
-use Filament\Tables\Filters\Filter;
 use Filament\Support\Colors\Color;
+use App\Models\KategoriOperasional;
 use Filament\Forms\Components\Grid;
+use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\Section;
+use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Notification;
 use App\Filament\Resources\OperasionalResource\Pages;
 
 class OperasionalResource extends Resource
@@ -36,7 +38,9 @@ class OperasionalResource extends Resource
                             ->timezone('Asia/Jakarta')
                             ->displayFormat('d/m/Y H:i')
                             ->default(now())
-                            ->required(),
+                            ->disabled()
+                            ->required()
+                            ->dehydrated(),
 
                         Forms\Components\Select::make('operasional')
                             ->label('Jenis Operasional')
@@ -45,29 +49,39 @@ class OperasionalResource extends Resource
                             ->native(false)
                             ->live()
                             ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                if ($state === 'pemasukan') {
-                                    $set('kategori_id', null);
-                                }
+                                $set('kategori_id', null);
                             }),
 
                         Forms\Components\Select::make('kategori_id')
                             ->label('Kategori')
-                            ->relationship(
-                                name: 'kategori',
-                                titleAttribute: 'nama',
-                            )
+                            ->options(function (Forms\Get $get) {
+                                return KategoriOperasional::query()
+                                    ->where('jenis', $get('operasional'))
+                                    ->pluck('nama', 'id');
+                            })
+                            ->required()
+                            ->native(false)
                             ->searchable()
                             ->preload()
+                            ->live()
+                            ->visible(fn(Forms\Get $get) => filled($get('operasional')))
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('nama')
                                     ->required()
                                     ->maxLength(255),
+                                Forms\Components\Select::make('jenis')
+                                    ->options(KategoriOperasional::JENIS_KATEGORI)
+                                    ->required(),
                                 Forms\Components\TextInput::make('keterangan')
                                     ->maxLength(255),
                             ])
-                            ->visible(fn(Forms\Get $get) => $get('operasional') === 'pengeluaran')
-                            ->required(),
-
+                            ->createOptionUsing(function (array $data) {
+                                return KategoriOperasional::create([
+                                    'nama' => $data['nama'],
+                                    'jenis' => $data['jenis'],
+                                    'keterangan' => $data['keterangan'] ?? null,
+                                ])->id;
+                            }),
                         Forms\Components\Select::make('tipe_nama')
                             ->label('Tipe')
                             ->options([
@@ -88,6 +102,7 @@ class OperasionalResource extends Resource
                             ->relationship('penjual', 'nama')
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('nama')
                                     ->required()
@@ -97,14 +112,28 @@ class OperasionalResource extends Resource
                                 Forms\Components\TextInput::make('telepon')
                                     ->maxLength(255),
                             ])
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state) {
+                                    $penjual = \App\Models\Penjual::find($state);
+                                    if ($penjual) {
+                                        $set('nama_penjual', $penjual->nama);
+                                        $set('info_hutang', "Rp " . number_format($penjual->hutang, 0, ',', '.'));
+                                        $set('jumlah_hutang', $penjual->hutang); // Simpan nilai hutang untuk validasi
+                                    }
+                                } else {
+                                    $set('nama_penjual', null);
+                                    $set('info_hutang', null);
+                                    $set('jumlah_hutang', 0);
+                                }
+                            })
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual'),
 
-                        // Select untuk Pekerja dengan create option
                         Forms\Components\Select::make('pekerja_id')
                             ->label('Nama Pekerja')
                             ->relationship('pekerja', 'nama')
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('nama')
                                     ->required()
@@ -114,7 +143,70 @@ class OperasionalResource extends Resource
                                 Forms\Components\TextInput::make('telepon')
                                     ->label('Telepon/HP'),
                             ])
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state) {
+                                    $pekerja = \App\Models\Pekerja::find($state);
+                                    if ($pekerja) {
+                                        $set('nama_pekerja', $pekerja->nama);
+                                        $set('info_hutang', "Rp " . number_format($pekerja->hutang, 0, ',', '.'));
+                                        $set('jumlah_hutang', $pekerja->hutang); // Simpan nilai hutang untuk validasi
+                                    }
+                                } else {
+                                    $set('nama_pekerja', null);
+                                    $set('info_hutang', null);
+                                    $set('jumlah_hutang', 0);
+                                }
+                            })
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja'),
+
+                        // Hidden field untuk menyimpan nilai hutang
+                        Forms\Components\Hidden::make('jumlah_hutang')
+                            ->default(0),
+
+                        // Informasi Hutang
+                        Forms\Components\Placeholder::make('info_hutang')
+                            ->label('Total Hutang Saat Ini')
+                            ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
+                            ->hidden(
+                                fn(Forms\Get $get) =>
+                                !in_array($get('tipe_nama'), ['penjual', 'pekerja']) ||
+                                    !filled($get('info_hutang'))
+                            )
+                            ->extraAttributes([
+                                'class' => 'text-2xl font-bold text-yellow-400', // Ubah ukuran dan warna
+                                'style' => 'text-transform: uppercase;' // Buat huruf kapital
+                            ]),
+
+                        Forms\Components\TextInput::make('nominal')
+                            ->required()
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->live(onBlur: true)
+                            ->currencyMask(
+                                thousandSeparator: '.',
+                                decimalSeparator: ',',
+                                precision: 0,
+                            )
+                            ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                if (
+                                    $get('operasional') === 'pemasukan' &&
+                                    $get('kategori_id') &&
+                                    filled($get('jumlah_hutang'))
+                                ) {
+
+                                    $nominal = (int) str_replace(['.', ','], ['', '.'], $state);
+                                    $hutang = (int) $get('jumlah_hutang');
+
+                                    if ($nominal > $hutang) {
+                                        $set('nominal', number_format($hutang, 0, ',', '.'));
+                                        Notification::make()
+                                            ->title('Nominal melebihi hutang')
+                                            ->warning()
+                                            ->body("Nominal pembayaran disesuaikan dengan total hutang Rp " . number_format($hutang, 0, ',', '.'))
+                                            ->send();
+                                    }
+                                }
+                            }),
 
                         // Select untuk User
                         Forms\Components\Select::make('user_id')
@@ -123,16 +215,6 @@ class OperasionalResource extends Resource
                             ->searchable()
                             ->preload()
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user'),
-
-                        Forms\Components\TextInput::make('nominal')
-                            ->required()
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->currencyMask(
-                                thousandSeparator: '.',
-                                decimalSeparator: ',',
-                                precision: 0,
-                            ),
 
                         Forms\Components\TextInput::make('keterangan')
                             ->maxLength(255),
@@ -153,9 +235,10 @@ class OperasionalResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('tanggal')
-                    ->date('d/m/Y')
-                    ->sortable()
-                    ->searchable(),
+                    ->label('Tanggal')
+                    ->badge()
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('operasional')
                     ->label('Jenis')
@@ -223,6 +306,7 @@ class OperasionalResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                Tables\Filters\TrashedFilter::make(),
                 SelectFilter::make('operasional')
                     ->label('Jenis Operasional')
                     ->options([
@@ -281,9 +365,9 @@ class OperasionalResource extends Resource
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\ForceDeleteBulkAction::make(),
+                Tables\Actions\RestoreBulkAction::make(),
             ])
             ->emptyStateHeading('Belum ada data operasional')
             ->emptyStateDescription('Silakan tambah data operasional baru dengan klik tombol di atas')
