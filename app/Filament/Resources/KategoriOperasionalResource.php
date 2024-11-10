@@ -31,6 +31,11 @@ class KategoriOperasionalResource extends Resource
                             ->maxLength(255)
                             ->unique(ignoreRecord: true),
 
+                        Forms\Components\Select::make('jenis')
+                            ->options(KategoriOperasional::JENIS_KATEGORI)
+                            ->required()
+                            ->native(false),
+
                         Forms\Components\Textarea::make('keterangan')
                             ->maxLength(255)
                             ->columnSpan('full'),
@@ -47,6 +52,14 @@ class KategoriOperasionalResource extends Resource
                 Tables\Columns\TextColumn::make('nama')
                     ->searchable()
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('jenis')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'pengeluaran' => 'danger',
+                        'pemasukan' => 'success',
+                        default => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('keterangan')
                     ->searchable()
