@@ -79,7 +79,8 @@ class OperasionalResource extends Resource
                             ->label('Tipe')
                             ->options([
                                 'penjual' => 'Penjual',
-                                'user' => 'User/Kasir'
+                                'user' => 'Karyawan',
+                                'Pekerja' => 'Pekerja',
                             ])
                             ->required()
                             ->live()
@@ -171,7 +172,7 @@ class OperasionalResource extends Resource
 
                         // Select untuk User
                         Forms\Components\Select::make('user_id')
-                            ->label('Nama User/Kasir')
+                            ->label('Nama Karyawan')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
@@ -191,7 +192,7 @@ class OperasionalResource extends Resource
                             ->imagePreviewHeight('250')
                             ->maxSize(2048),
                     ])
-                    ->columns(3)
+                    ->columns(2)
             ]);
     }
 

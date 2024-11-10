@@ -414,7 +414,10 @@ class TransaksiDoResource extends Resource
                 Tables\Actions\RestoreBulkAction::make(),
 
                 // ]),
-            ]);
+            ])
+            ->emptyStateHeading('Belum ada data Transaksi DO')
+            ->emptyStateDescription('Silakan tambah Transaksi DO baru dengan klik tombol di atas')
+            ->emptyStateIcon('heroicon-o-banknotes');
     }
 
 

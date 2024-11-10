@@ -23,7 +23,8 @@ class KeuanganResource extends Resource
 
     protected static ?string $model = Keuangan::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static ?int $navigationSort = 2;
 
     public static function getWidgets(): array
     {
