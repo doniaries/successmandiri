@@ -67,7 +67,6 @@ class TransaksiDo extends Model
         'sisa_hutang' => 0,
         'sisa_bayar' => 0,
         'status_bayar' => 'Belum Lunas',
-        'status_bayar' => 'Lunas',
     ];
 
 
@@ -76,110 +75,110 @@ class TransaksiDo extends Model
         return $this->belongsTo(Penjual::class);
     }
 
-    public function pekerjas()
-    {
-        return $this->belongsToMany(Pekerja::class, 'pekerja_transaksi_do')
-            ->withPivot('pendapatan_pekerja')
-            ->withTimestamps();
-    }
+    // public function pekerjas()
+    // {
+    //     return $this->belongsToMany(Pekerja::class, 'pekerja_transaksi_do')
+    //         ->withPivot('pendapatan_pekerja')
+    //         ->withTimestamps();
+    // }
 
-    public function getTotalPekerjaAttribute()
-    {
-        return $this->pekerjas()
-            ->whereNull('pekerjas.deleted_at')
-            ->count();
-    }
+    // public function getTotalPekerjaAttribute()
+    // {
+    //     return $this->pekerjas()
+    //         ->whereNull('pekerjas.deleted_at')
+    //         ->count();
+    // }
 
-    public function updatePendapatanPekerja()
-    {
-        $jumlahPekerja = $this->pekerjas()->count();
+    // public function updatePendapatanPekerja()
+    // {
+    //     $jumlahPekerja = $this->pekerjas()->count();
 
-        if ($jumlahPekerja > 0) {
-            $pendapatanPerPekerja = $this->upah_bongkar / $jumlahPekerja;
+    //     if ($jumlahPekerja > 0) {
+    //         $pendapatanPerPekerja = $this->upah_bongkar / $jumlahPekerja;
 
-            foreach ($this->pekerjas as $pekerja) {
-                // Reset pendapatan lama jika ada
-                $pendapatanLama = $pekerja->pivot->pendapatan_pekerja ?? 0;
-                $pekerja->decrement('pendapatan', $pendapatanLama);
+    //         foreach ($this->pekerjas as $pekerja) {
+    //             // Reset pendapatan lama jika ada
+    //             $pendapatanLama = $pekerja->pivot->pendapatan_pekerja ?? 0;
+    //             $pekerja->decrement('pendapatan', $pendapatanLama);
 
-                // Update pendapatan baru
-                $this->pekerjas()->updateExistingPivot($pekerja->id, [
-                    'pendapatan_pekerja' => $pendapatanPerPekerja
-                ]);
-                $pekerja->increment('pendapatan', $pendapatanPerPekerja);
-            }
-        }
-    }
+    //             // Update pendapatan baru
+    //             $this->pekerjas()->updateExistingPivot($pekerja->id, [
+    //                 'pendapatan_pekerja' => $pendapatanPerPekerja
+    //             ]);
+    //             $pekerja->increment('pendapatan', $pendapatanPerPekerja);
+    //         }
+    //     }
+    // }
 
     protected static function boot()
     {
         parent::boot();
 
-        // Saat transaksi dibuat
-        static::created(function ($transaksiDo) {
-            $jumlahPekerja = count($transaksiDo->pekerjas);
-            if ($jumlahPekerja > 0) {
-                $pendapatanPerPekerja = $transaksiDo->upah_bongkar / $jumlahPekerja;
+        //     // Saat transaksi dibuat
+        //     static::created(function ($transaksiDo) {
+        //         $jumlahPekerja = count($transaksiDo->pekerjas);
+        //         if ($jumlahPekerja > 0) {
+        //             $pendapatanPerPekerja = $transaksiDo->upah_bongkar / $jumlahPekerja;
 
-                foreach ($transaksiDo->pekerjas as $pekerja) {
-                    // Update pivot table
-                    $transaksiDo->pekerjas()->updateExistingPivot($pekerja->id, [
-                        'pendapatan_pekerja' => $pendapatanPerPekerja
-                    ]);
+        //             foreach ($transaksiDo->pekerjas as $pekerja) {
+        //                 // Update pivot table
+        //                 $transaksiDo->pekerjas()->updateExistingPivot($pekerja->id, [
+        //                     'pendapatan_pekerja' => $pendapatanPerPekerja
+        //                 ]);
 
-                    // Update kolom pendapatan di tabel pekerja
-                    $totalPendapatan = $pekerja->transaksiDos()
-                        ->whereNull('deleted_at')
-                        ->sum('pekerja_transaksi_do.pendapatan_pekerja');
+        //                 // Update kolom pendapatan di tabel pekerja
+        //                 $totalPendapatan = $pekerja->transaksiDos()
+        //                     ->whereNull('deleted_at')
+        //                     ->sum('pekerja_transaksi_do.pendapatan_pekerja');
 
-                    $pekerja->update(['pendapatan' => $totalPendapatan]);
-                }
-            }
-        });
+        //                 $pekerja->update(['pendapatan' => $totalPendapatan]);
+        //             }
+        //         }
+        //     });
 
 
-        // Saat transaksi diupdate
-        static::updated(function ($transaksiDo) {
-            if ($transaksiDo->isDirty('upah_bongkar') || $transaksiDo->isDirty('pekerjas')) {
-                $transaksiDo->updatePendapatanPekerja();
-            }
-        });
+        //     // Saat transaksi diupdate
+        //     static::updated(function ($transaksiDo) {
+        //         if ($transaksiDo->isDirty('upah_bongkar') || $transaksiDo->isDirty('pekerjas')) {
+        //             $transaksiDo->updatePendapatanPekerja();
+        //         }
+        //     });
 
-        // Saat transaksi diupdate
-        static::updated(function ($transaksiDo) {
-            if ($transaksiDo->isDirty('upah_bongkar')) {
-                $jumlahPekerja = count($transaksiDo->pekerjas);
-                if ($jumlahPekerja > 0) {
-                    $pendapatanPerPekerja = $transaksiDo->upah_bongkar / $jumlahPekerja;
+        //     // Saat transaksi diupdate
+        //     static::updated(function ($transaksiDo) {
+        //         if ($transaksiDo->isDirty('upah_bongkar')) {
+        //             $jumlahPekerja = count($transaksiDo->pekerjas);
+        //             if ($jumlahPekerja > 0) {
+        //                 $pendapatanPerPekerja = $transaksiDo->upah_bongkar / $jumlahPekerja;
 
-                    foreach ($transaksiDo->pekerjas as $pekerja) {
-                        // Update pivot table
-                        $transaksiDo->pekerjas()->updateExistingPivot($pekerja->id, [
-                            'pendapatan_pekerja' => $pendapatanPerPekerja
-                        ]);
+        //                 foreach ($transaksiDo->pekerjas as $pekerja) {
+        //                     // Update pivot table
+        //                     $transaksiDo->pekerjas()->updateExistingPivot($pekerja->id, [
+        //                         'pendapatan_pekerja' => $pendapatanPerPekerja
+        //                     ]);
 
-                        // Hitung ulang total pendapatan
-                        $totalPendapatan = $pekerja->transaksiDos()
-                            ->whereNull('deleted_at')
-                            ->sum('pekerja_transaksi_do.pendapatan_pekerja');
+        //                     // Hitung ulang total pendapatan
+        //                     $totalPendapatan = $pekerja->transaksiDos()
+        //                         ->whereNull('deleted_at')
+        //                         ->sum('pekerja_transaksi_do.pendapatan_pekerja');
 
-                        $pekerja->update(['pendapatan' => $totalPendapatan]);
-                    }
-                }
-            }
-        });
+        //                     $pekerja->update(['pendapatan' => $totalPendapatan]);
+        //                 }
+        //             }
+        //         }
+        //     });
 
-        // Saat transaksi dihapus
-        static::deleting(function ($transaksiDo) {
-            foreach ($transaksiDo->pekerjas as $pekerja) {
-                // Update kolom pendapatan di tabel pekerja (kurangi pendapatan dari transaksi ini)
-                $pendapatanDariTransaksiIni = $pekerja->pivot->pendapatan_pekerja;
-                $totalPendapatan = $pekerja->pendapatan - $pendapatanDariTransaksiIni;
-                $pekerja->update(['pendapatan' => max(0, $totalPendapatan)]);
-            }
-            // Hapus relasi di pivot table
-            $transaksiDo->pekerjas()->detach();
-        });
+        //     // Saat transaksi dihapus
+        //     static::deleting(function ($transaksiDo) {
+        //         foreach ($transaksiDo->pekerjas as $pekerja) {
+        //             // Update kolom pendapatan di tabel pekerja (kurangi pendapatan dari transaksi ini)
+        //             $pendapatanDariTransaksiIni = $pekerja->pivot->pendapatan_pekerja;
+        //             $totalPendapatan = $pekerja->pendapatan - $pendapatanDariTransaksiIni;
+        //             $pekerja->update(['pendapatan' => max(0, $totalPendapatan)]);
+        //         }
+        //         // Hapus relasi di pivot table
+        //         $transaksiDo->pekerjas()->detach();
+        //     });
     }
 
     public function operasional(): HasMany
