@@ -296,6 +296,7 @@ class OperasionalResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                Tables\Filters\TrashedFilter::make(),
                 SelectFilter::make('operasional')
                     ->label('Jenis Operasional')
                     ->options([
@@ -354,9 +355,10 @@ class OperasionalResource extends Resource
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\ForceDeleteBulkAction::make(),
+                Tables\Actions\RestoreBulkAction::make(),
+
             ])
             ->emptyStateHeading('Belum ada data operasional')
             ->emptyStateDescription('Silakan tambah data operasional baru dengan klik tombol di atas')
