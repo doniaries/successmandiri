@@ -75,12 +75,8 @@ class TransaksiDo extends Model
         return $this->belongsTo(Penjual::class);
     }
 
-<<<<<<< HEAD
-    public function operasional(): HasMany
-    {
-        return $this->hasMany(Operasional::class, 'penjual_id');
-    }
-=======
+
+
     // public function pekerjas()
     // {
     //     return $this->belongsToMany(Pekerja::class, 'pekerja_transaksi_do')
@@ -115,13 +111,12 @@ class TransaksiDo extends Model
     //         }
     //     }
     // }
->>>>>>> 908241bebf6ed7eb04a2b791ca86bc446a2005bb
+
 
     protected static function boot()
     {
         parent::boot();
-<<<<<<< HEAD
-=======
+
 
         //     // Saat transaksi dibuat
         //     static::created(function ($transaksiDo) {
@@ -193,6 +188,5 @@ class TransaksiDo extends Model
     public function operasional(): HasMany
     {
         return $this->hasMany(Operasional::class, 'penjual_id', 'penjual_id');
->>>>>>> 908241bebf6ed7eb04a2b791ca86bc446a2005bb
     }
 }

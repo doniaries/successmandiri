@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TransaksiDoResource\Widgets;
 
 use App\Models\TransaksiDo;
+use App\Models\Perusahaan;
 use App\Models\Operasional;
 use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -19,6 +20,10 @@ class TransaksiDoStatWidget extends BaseWidget
     {
         $today = now()->today();
         $startOfMonth = now()->startOfMonth();
+
+        // Get saldo from perusahaan
+        $saldoPerusahaan = Perusahaan::first()?->saldo ?? 0;
+
 
         // Kalkulasi Pemasukan Hari Ini
         $pemasukanHariIni = TransaksiDo::whereDate('created_at', $today)
@@ -51,16 +56,10 @@ class TransaksiDoStatWidget extends BaseWidget
 
         return [
             // Stat Saldo Perusahaan (Ditambahkan di awal)
-            Stat::make('Saldo Perusahaan', 'Rp ' . number_format($saldoHariIni, 0, ',', '.'))
-                ->description($perubahanSaldo >= 0 ?
-                    'Naik ' . number_format(abs($perubahanSaldo), 1) . '% dari kemarin' :
-                    'Turun ' . number_format(abs($perubahanSaldo), 1) . '% dari kemarin')
-                ->descriptionIcon($perubahanSaldo >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($perubahanSaldo >= 0 ? 'success' : 'danger')
-                ->chart($trendSaldo)
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all hover:scale-105 hover:shadow-lg',
-                ]),
+            Stat::make('Saldo Perusahaan', 'Rp ' . number_format($saldoPerusahaan, 0, ',', '.'))
+                ->description('Total saldo tersedia')
+                ->descriptionIcon('heroicon-m-banknotes')
+                ->color('success'),
 
             // Stat yang sudah ada sebelumnya
             Stat::make('Pemasukan Hari Ini', 'Rp ' . number_format($pemasukanHariIni->total_pemasukan ?? 0, 0, ',', '.'))

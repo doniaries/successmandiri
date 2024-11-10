@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\KeuanganResource\Pages;
 use App\Filament\Resources\KeuanganResource\RelationManagers;
 use App\Models\Keuangan;
+use App\Models\Perusahaan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,15 +13,26 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Widgets\StatsOverviewWidget\Stat;
+use Filament\Widgets\StatsOverviewWidget;
+use Illuminate\Support\Facades\DB;
+use App\Filament\Resources\KeuanganResource\Widgets;
 
 class KeuanganResource extends Resource
 {
 
-
-
     protected static ?string $model = Keuangan::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    public static function getWidgets(): array
+    {
+        return [
+            Widgets\KeuanganStatsWidget::class,
+        ];
+    }
+
+
 
     public static function form(Form $form): Form
     {
@@ -28,9 +40,6 @@ class KeuanganResource extends Resource
             ->schema([
                 Forms\Components\DateTimePicker::make('tanggal')
                     ->required(),
-                Forms\Components\TextInput::make('keterangan')
-                    ->required()
-                    ->maxLength(255),
                 Forms\Components\TextInput::make('jenis_transaksi')
                     ->required(),
                 Forms\Components\TextInput::make('jumlah')
@@ -40,6 +49,9 @@ class KeuanganResource extends Resource
                     ->maxLength(100),
                 Forms\Components\TextInput::make('sumber')
                     ->maxLength(100),
+                Forms\Components\TextInput::make('keterangan')
+                    ->required()
+                    ->maxLength(255),
             ]);
     }
 
@@ -50,8 +62,6 @@ class KeuanganResource extends Resource
                 Tables\Columns\TextColumn::make('tanggal')
                     ->dateTime()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('keterangan')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('jenis_transaksi'),
                 Tables\Columns\TextColumn::make('jumlah')
                     ->numeric()
@@ -59,6 +69,8 @@ class KeuanganResource extends Resource
                 Tables\Columns\TextColumn::make('kategori')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('sumber')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('keterangan')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()

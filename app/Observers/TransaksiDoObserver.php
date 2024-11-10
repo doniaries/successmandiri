@@ -17,10 +17,10 @@ class TransaksiDoObserver
             Keuangan::create([
                 'tanggal' => $transaksiDo->tanggal,
                 'jenis_transaksi' => 'Keluar',
-                'kategori' => 'Total DO',
+                'kategori' => 'Sisa Bayar',
                 'sumber' => 'Penjual',
-                'jumlah' => $transaksiDo->total,
-                'keterangan' => "Total DO #{$transaksiDo->nomor}"
+                'jumlah' => $transaksiDo->sisa_bayar,
+                'keterangan' => "Sisa Bayar DO #{$transaksiDo->nomor}"
             ]);
 
             // 2. Jika ada pembayaran hutang
