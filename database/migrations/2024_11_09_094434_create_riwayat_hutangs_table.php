@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('riwayat_hutang', function (Blueprint $table) {
             $table->id();
-            $table->enum('tipe_entitas', ['penjual', 'pekerja']);
+            $table->enum('tipe_entitas', ['penjual']);
             $table->unsignedBigInteger('entitas_id');
             $table->decimal('nominal', 15, 0);
             $table->enum('jenis', ['penambahan', 'pengurangan']);

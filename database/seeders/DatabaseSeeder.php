@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Pekerja;
 use App\Models\Penjual;
 use App\Models\Perusahaan;
 use Illuminate\Database\Seeder;

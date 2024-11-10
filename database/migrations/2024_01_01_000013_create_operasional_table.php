@@ -21,16 +21,11 @@ return new class extends Migration
                 ->constrained('kategori_operasional')
                 ->nullOnDelete();
 
-            $table->enum('tipe_nama', ['penjual', 'pekerja', 'user']);
+            $table->enum('tipe_nama', ['penjual', 'user']);
 
             $table->foreignId('penjual_id')
                 ->nullable()
                 ->constrained('penjuals')
-                ->nullOnDelete();
-
-            $table->foreignId('pekerja_id')
-                ->nullable()
-                ->constrained('pekerjas')
                 ->nullOnDelete();
 
             $table->foreignId('user_id')

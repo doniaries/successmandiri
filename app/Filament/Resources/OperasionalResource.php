@@ -16,8 +16,10 @@ use Filament\Forms\Components\Section;
 use Illuminate\Database\Eloquent\Model;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Notification;
 use App\Filament\Resources\OperasionalResource\Pages;
+use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 class OperasionalResource extends Resource
 {
@@ -77,14 +79,12 @@ class OperasionalResource extends Resource
                             ->label('Tipe')
                             ->options([
                                 'penjual' => 'Penjual',
-                                'pekerja' => 'Pekerja',
                                 'user' => 'User/Kasir'
                             ])
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Forms\Set $set) {
                                 $set('penjual_id', null);
-                                $set('pekerja_id', null);
                                 $set('user_id', null);
                             }),
 
@@ -119,36 +119,6 @@ class OperasionalResource extends Resource
                             })
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual'),
 
-                        Forms\Components\Select::make('pekerja_id')
-                            ->label('Nama Pekerja')
-                            ->relationship('pekerja', 'nama')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('nama')
-                                    ->required()
-                                    ->label('Nama'),
-                                Forms\Components\TextInput::make('alamat')
-                                    ->label('Alamat'),
-                                Forms\Components\TextInput::make('telepon')
-                                    ->label('Telepon/HP'),
-                            ])
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                if ($state) {
-                                    $pekerja = \App\Models\Pekerja::find($state);
-                                    if ($pekerja) {
-                                        $set('nama_pekerja', $pekerja->nama);
-                                        $set('info_hutang', "Rp " . number_format($pekerja->hutang, 0, ',', '.'));
-                                        $set('jumlah_hutang', $pekerja->hutang); // Simpan nilai hutang untuk validasi
-                                    }
-                                } else {
-                                    $set('nama_pekerja', null);
-                                    $set('info_hutang', null);
-                                    $set('jumlah_hutang', 0);
-                                }
-                            })
-                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja'),
 
                         // Hidden field untuk menyimpan nilai hutang
                         Forms\Components\Hidden::make('jumlah_hutang')
@@ -160,7 +130,7 @@ class OperasionalResource extends Resource
                             ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
                             ->hidden(
                                 fn(Forms\Get $get) =>
-                                !in_array($get('tipe_nama'), ['penjual', 'pekerja']) ||
+                                !in_array($get('tipe_nama'), ['penjual']) ||
                                     !filled($get('info_hutang'))
                             )
                             ->extraAttributes([
@@ -207,6 +177,10 @@ class OperasionalResource extends Resource
                             ->preload()
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user'),
 
+
+                        Forms\Components\Hidden::make('is_from_transaksi')
+                            ->default(false),
+
                         Forms\Components\TextInput::make('keterangan')
                             ->maxLength(255),
 
@@ -252,7 +226,6 @@ class OperasionalResource extends Resource
                     ->formatStateUsing(function (Model $record) {
                         return match ($record->tipe_nama) {
                             'penjual' => $record->penjual?->nama,
-                            'pekerja' => $record->pekerja?->nama,
                             'user' => $record->user?->name,
                             default => '-'
                         };
@@ -260,7 +233,6 @@ class OperasionalResource extends Resource
                     ->searchable(query: function (Builder $query, string $search) {
                         return $query->where(function ($query) use ($search) {
                             $query->whereHas('penjual', fn($q) => $q->where('nama', 'like', "%{$search}%"))
-                                ->orWhereHas('pekerja', fn($q) => $q->where('nama', 'like', "%{$search}%"))
                                 ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"));
                         });
                     }),
@@ -279,9 +251,21 @@ class OperasionalResource extends Resource
                             ->money('IDR')
                     ]),
 
+                Tables\Columns\IconColumn::make('is_from_transaksi')
+                    ->label('Dari DO')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-minus-circle')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->alignCenter(),
+
                 Tables\Columns\TextColumn::make('keterangan')
                     ->limit(30)
-                    ->searchable(),
+                    ->searchable()
+                    ->description(fn(Operasional $record) =>
+                    $record->is_from_transaksi ? 'Data dari Transaksi DO' : null)
+                    ->tooltip(fn(Operasional $record) => $record->keterangan),
 
                 Tables\Columns\ImageColumn::make('file_bukti')
                     ->label('Bukti')
@@ -294,7 +278,8 @@ class OperasionalResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('tanggal', 'desc')
+            ->modifyQueryUsing(fn(Builder $query) => $query->latest('tanggal'))
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
                 SelectFilter::make('operasional')
@@ -351,13 +336,50 @@ class OperasionalResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn(Operasional $record) => !$record->is_from_transaksi),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn(Operasional $record) => !$record->is_from_transaksi),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-                Tables\Actions\ForceDeleteBulkAction::make(),
-                Tables\Actions\RestoreBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->action(function (EloquentCollection $records) {  // Ubah tipe Collection
+                        $records->reject(fn($record) => $record->is_from_transaksi)
+                            ->each(fn($record) => $record->delete());
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->successNotification(
+                        Notification::make()
+                            ->success()
+                            ->title('Data berhasil dihapus')
+                            ->body('Data yang bukan dari transaksi DO telah dihapus')
+                    ),
+
+                Tables\Actions\ForceDeleteBulkAction::make()
+                    ->action(function (EloquentCollection $records) {  // Ubah tipe Collection
+                        $records->reject(fn($record) => $record->is_from_transaksi)
+                            ->each(fn($record) => $record->forceDelete());
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->successNotification(
+                        Notification::make()
+                            ->success()
+                            ->title('Data berhasil dihapus permanen')
+                            ->body('Data yang bukan dari transaksi DO telah dihapus permanen')
+                    ),
+
+                Tables\Actions\RestoreBulkAction::make()
+                    ->action(function (EloquentCollection $records) {  // Ubah tipe Collection
+                        $records->reject(fn($record) => $record->is_from_transaksi)
+                            ->each(fn($record) => $record->restore());
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->successNotification(
+                        Notification::make()
+                            ->success()
+                            ->title('Data berhasil dipulihkan')
+                            ->body('Data yang bukan dari transaksi DO telah dipulihkan')
+                    ),
 
             ])
             ->emptyStateHeading('Belum ada data operasional')

@@ -4,7 +4,6 @@ namespace App\Observers;
 
 use App\Models\Operasional;
 use App\Models\Penjual;
-use App\Models\Pekerja;
 use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
 
@@ -108,31 +107,6 @@ class OperasionalObserver
                                 'action' => $action,
                                 'hutang_lama' => $hutangLama,
                                 'hutang_baru' => $penjual->hutang,
-                                'nominal' => $operasional->nominal
-                            ]);
-                        }
-                    }
-                    break;
-
-                case 'pekerja':
-                    if ($operasional->pekerja_id) {
-                        $pekerja = Pekerja::find($operasional->pekerja_id);
-                        if ($pekerja) {
-                            $hutangLama = $pekerja->hutang;
-
-                            if ($action === 'tambah') {
-                                $pekerja->hutang += $operasional->nominal;
-                            } else {
-                                $pekerja->hutang = max(0, $pekerja->hutang - $operasional->nominal);
-                            }
-
-                            $pekerja->save();
-
-                            \Log::info('Hutang Pekerja Updated:', [
-                                'pekerja_id' => $pekerja->id,
-                                'action' => $action,
-                                'hutang_lama' => $hutangLama,
-                                'hutang_baru' => $pekerja->hutang,
                                 'nominal' => $operasional->nominal
                             ]);
                         }

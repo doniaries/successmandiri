@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Pekerja;
 use App\Models\Penjual;
 use App\Models\Perusahaan;
 use App\Models\TransaksiDo;
@@ -65,13 +64,6 @@ class TransaksiWidget extends BaseWidget
                 ->color('success')
                 ->chart([7, 2, 10, 3, 15, 4, 17])
                 ->chartColor('success'),
-
-            // Stat::make('Jumlah Pekerja', Pekerja::count())
-            //     ->description('Total pekerja aktif')
-            //     ->descriptionIcon('heroicon-m-users')
-            //     ->color('info')
-            //     ->chart([3, 16, 2, 11, 8, 13, 6])
-            //     ->chartColor('info'),
 
             Stat::make('Jumlah Perusahaan', Perusahaan::count())
                 ->description('Total perusahaan terdaftar')

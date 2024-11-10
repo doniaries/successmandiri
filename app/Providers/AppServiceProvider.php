@@ -6,6 +6,8 @@ use URL;
 use App\Models\Operasional;
 use App\Observers\OperasionalObserver;
 use Illuminate\Support\ServiceProvider;
+use App\Models\TransaksiDo;
+use App\Observers\TransaksiDoObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,5 +32,6 @@ class AppServiceProvider extends ServiceProvider
 
         \Log::info('Registering Observers');
         Operasional::observe(OperasionalObserver::class);
+        TransaksiDo::observe(TransaksiDoObserver::class);
     }
 }

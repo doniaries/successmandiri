@@ -3,10 +3,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
 class RiwayatHutang extends Model
 {
+    use SoftDeletes;
     protected $table = 'riwayat_hutang';
 
     protected $fillable = [
@@ -27,7 +29,6 @@ class RiwayatHutang extends Model
     {
         return match ($this->tipe_entitas) {
             'penjual' => $this->belongsTo(Penjual::class, 'entitas_id'),
-            'pekerja' => $this->belongsTo(Pekerja::class, 'entitas_id'),
             default => null
         };
     }

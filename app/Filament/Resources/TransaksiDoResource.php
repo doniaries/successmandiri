@@ -135,6 +135,14 @@ class TransaksiDoResource extends Resource
                     // Panel Kanan
                     Forms\Components\Section::make()
                         ->schema([
+                            Forms\Components\TextInput::make('hutang')
+                                ->label('Total Hutang')
+                                ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
+                                ->prefix('Rp')
+                                ->disabled()
+                                ->dehydrated()
+                                ->numeric()
+                                ->default(0),
                             Forms\Components\TextInput::make('total')
                                 ->label('Sub Total')
                                 ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
@@ -158,7 +166,7 @@ class TransaksiDoResource extends Resource
                                 ->schema([
                                     Forms\Components\TextInput::make('upah_bongkar')
                                         ->label('Upah Bongkar')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->prefix('Rp')
                                         ->default(0)
                                         ->live(onBlur: true)
@@ -167,7 +175,7 @@ class TransaksiDoResource extends Resource
 
                                     Forms\Components\TextInput::make('biaya_lain')
                                         ->label('Biaya Lain')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->prefix('Rp')
                                         ->default(0)
                                         ->live(onBlur: true)
@@ -176,7 +184,7 @@ class TransaksiDoResource extends Resource
 
                                     Forms\Components\TextInput::make('bayar_hutang')
                                         ->label('Bayar Hutang')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->prefix('Rp')
                                         ->default(0)
                                         // ->required()
@@ -220,18 +228,9 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\Grid::make()
                                 ->schema([
-                                    Forms\Components\TextInput::make('hutang')
-                                        ->label('Total Hutang')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
-                                        ->prefix('Rp')
-                                        ->disabled()
-                                        ->dehydrated()
-                                        ->numeric()
-                                        ->default(0),
-
                                     Forms\Components\TextInput::make('sisa_hutang')
                                         ->label('Sisa Hutang')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->prefix('Rp')
                                         ->default(0)
                                         ->disabled()
@@ -240,7 +239,7 @@ class TransaksiDoResource extends Resource
                                     Forms\Components\TextInput::make('sisa_bayar')
                                         ->label('Sisa Bayar')
                                         ->prefix('Rp')
-                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->disabled()
                                         ->dehydrated(),
 
@@ -294,7 +293,6 @@ class TransaksiDoResource extends Resource
                     ->badge()
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-
 
                 Tables\Columns\TextColumn::make('penjual.nama')
                     ->label('Penjual')

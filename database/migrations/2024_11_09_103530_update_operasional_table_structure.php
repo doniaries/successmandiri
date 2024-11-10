@@ -17,7 +17,7 @@ return new class extends Migration
 
             // Tambah kolom baru dengan definisi yang benar
             $table->enum('operasional', ['pemasukan', 'pengeluaran'])->after('tanggal');
-            $table->enum('tipe_nama', ['penjual', 'pekerja', 'user'])->after('kategori_id');
+            $table->enum('tipe_nama', ['penjual', 'user'])->after('kategori_id');
 
             // Tambah index baru
             $table->index('operasional');

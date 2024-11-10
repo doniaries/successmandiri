@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Models\User;
-use App\Models\Pekerja;
 use App\Models\Penjual;
 use App\Models\KategoriOperasional;
 use Illuminate\Database\Eloquent\Model;
@@ -23,11 +22,11 @@ class Operasional extends Model
         'kategori_id',
         'tipe_nama',
         'penjual_id',
-        'pekerja_id',
         'user_id',
         'nominal',
         'keterangan',
         'file_bukti',
+        'is_from_transaksi',
     ];
 
     protected $dates = [
@@ -40,6 +39,7 @@ class Operasional extends Model
     protected $casts = [
         'tanggal' => 'date',
         'nominal' => 'decimal:0',
+        'is_from_transaksi' => 'boolean',
     ];
 
     const JENIS_OPERASIONAL = [
@@ -47,15 +47,15 @@ class Operasional extends Model
         'pengeluaran' => 'Pengeluaran',
     ];
 
-    // const KATEGORI_OPERASIONAL = [
-    //     'bayar_hutang' => 'Bayar Hutang',
-    //     'uang_jalan' => 'Uang Jalan',
-    //     'gaji' => 'Gaji',
-    //     'bahan_bakar' => 'Bahan Bakar',
-    //     'perawatan' => 'Perawatan',
-    //     'lain_lain' => 'Lain-lain',
-    //     'pinjaman' => 'Pinjaman'
-    // ];
+    const KATEGORI_OPERASIONAL = [
+        'bayar_hutang' => 'Bayar Hutang',
+        'uang_jalan' => 'Uang Jalan',
+        'gaji' => 'Gaji',
+        'bahan_bakar' => 'Bahan Bakar',
+        'perawatan' => 'Perawatan',
+        'lain_lain' => 'Lain-lain',
+        'pinjaman' => 'Pinjaman'
+    ];
 
     // Relations
     public function penjual()
@@ -63,10 +63,6 @@ class Operasional extends Model
         return $this->belongsTo(Penjual::class);
     }
 
-    public function pekerja()
-    {
-        return $this->belongsTo(Pekerja::class);
-    }
 
     public function user()
     {
@@ -78,7 +74,6 @@ class Operasional extends Model
     {
         return match ($this->tipe_nama) {
             'penjual' => $this->penjual?->nama,
-            'pekerja' => $this->pekerja?->nama,
             'user' => $this->user?->name,
             default => null
         };

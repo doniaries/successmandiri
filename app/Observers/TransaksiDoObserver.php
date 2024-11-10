@@ -2,8 +2,9 @@
 
 namespace App\Observers;
 
-use App\Models\Operasional;
+use App\Models\Keuangan;
 use App\Models\TransaksiDo;
+use Illuminate\Support\Facades\DB;
 
 class TransaksiDoObserver
 {
@@ -13,28 +14,24 @@ class TransaksiDoObserver
             DB::beginTransaction();
 
             // 1. Catat total DO sebagai pengeluaran
-            Operasional::create([
+            Keuangan::create([
                 'tanggal' => $transaksiDo->tanggal,
-                'operasional' => 'pengeluaran',
-                'kategori_id' => KategoriOperasional::TOTAL_DO,
-                'tipe_nama' => 'penjual',
-                'penjual_id' => $transaksiDo->penjual_id,
-                'nominal' => $transaksiDo->total,
-                'keterangan' => "Total DO #{$transaksiDo->nomor}",
-                'is_from_transaksi' => true,
+                'jenis_transaksi' => 'Keluar',
+                'kategori' => 'Total DO',
+                'sumber' => 'Penjual',
+                'jumlah' => $transaksiDo->total,
+                'keterangan' => "Total DO #{$transaksiDo->nomor}"
             ]);
 
             // 2. Jika ada pembayaran hutang
             if ($transaksiDo->bayar_hutang > 0) {
-                Operasional::create([
+                Keuangan::create([
                     'tanggal' => $transaksiDo->tanggal,
-                    'operasional' => 'pemasukan',
-                    'kategori_id' => KategoriOperasional::BAYAR_HUTANG,
-                    'tipe_nama' => 'penjual',
-                    'penjual_id' => $transaksiDo->penjual_id,
-                    'nominal' => $transaksiDo->bayar_hutang,
-                    'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}",
-                    'is_from_transaksi' => true,
+                    'jenis_transaksi' => 'Masuk',
+                    'kategori' => 'Bayar Hutang',
+                    'sumber' => 'Penjual',
+                    'jumlah' => $transaksiDo->bayar_hutang,
+                    'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}"
                 ]);
             }
 
