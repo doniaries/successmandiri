@@ -33,14 +33,17 @@ class OperasionalResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make()
+                // Section 1: Informasi Dasar
+                Forms\Components\Section::make('Informasi Dasar')
+                    ->description('Masukkan informasi dasar operasional')
                     ->schema([
                         Forms\Components\DateTimePicker::make('tanggal')
                             ->label('Tanggal')
                             ->timezone('Asia/Jakarta')
                             ->displayFormat('d/m/Y H:i')
                             ->default(now())
-                            ->required(),
+                            ->required()
+                            ->columnSpan('full'),
 
                         Forms\Components\Select::make('operasional')
                             ->label('Jenis Operasional')
@@ -50,7 +53,11 @@ class OperasionalResource extends Resource
                             ->live()
                             ->afterStateUpdated(function ($state, Forms\Set $set) {
                                 $set('kategori_id', null);
-                            }),
+                                $set('tipe_nama', null);
+                                $set('penjual_id', null);
+                                $set('user_id', null);
+                            })
+                            ->columnSpan('full'),
 
                         Forms\Components\Select::make('kategori_id')
                             ->label('Kategori')
@@ -74,7 +81,15 @@ class OperasionalResource extends Resource
                                     ->required(),
                                 Forms\Components\TextInput::make('keterangan')
                                     ->maxLength(255),
-                            ]),
+                            ])
+                            ->columnSpan('full'),
+                    ])
+                    ->columns(2),
+
+                // Section 2: Detail Transaksi
+                Forms\Components\Section::make('Detail Transaksi')
+                    ->description('Pilih tipe dan nama terkait')
+                    ->schema([
                         Forms\Components\Select::make('tipe_nama')
                             ->label('Tipe')
                             ->options([
@@ -87,8 +102,13 @@ class OperasionalResource extends Resource
                             ->afterStateUpdated(function ($state, Forms\Set $set) {
                                 $set('penjual_id', null);
                                 $set('user_id', null);
-                            }),
+                                $set('info_hutang', null);
+                                $set('jumlah_hutang', 0);
+                            })
+                            ->columnSpan('full')
+                            ->visible(fn(Forms\Get $get) => filled($get('kategori_id'))),
 
+                        // Field Penjual - muncul jika tipe penjual dipilih
                         Forms\Components\Select::make('penjual_id')
                             ->label('Nama Penjual')
                             ->relationship('penjual', 'nama')
@@ -108,37 +128,47 @@ class OperasionalResource extends Resource
                                 if ($state) {
                                     $penjual = \App\Models\Penjual::find($state);
                                     if ($penjual) {
-                                        $set('nama_penjual', $penjual->nama);
                                         $set('info_hutang', "Rp " . number_format($penjual->hutang, 0, ',', '.'));
-                                        $set('jumlah_hutang', $penjual->hutang); // Simpan nilai hutang untuk validasi
+                                        $set('jumlah_hutang', $penjual->hutang);
                                     }
                                 } else {
-                                    $set('nama_penjual', null);
                                     $set('info_hutang', null);
                                     $set('jumlah_hutang', 0);
                                 }
                             })
-                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual'),
+                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual')
+                            ->columnSpan('full'),
 
-
-                        // Hidden field untuk menyimpan nilai hutang
-                        Forms\Components\Hidden::make('jumlah_hutang')
-                            ->default(0),
+                        // Field User/Karyawan - muncul jika tipe user dipilih
+                        Forms\Components\Select::make('user_id')
+                            ->label('Nama Karyawan')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user')
+                            ->columnSpan('full'),
 
                         // Informasi Hutang
                         Forms\Components\Placeholder::make('info_hutang')
                             ->label('Total Hutang Saat Ini')
                             ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
-                            ->hidden(
+                            ->visible(
                                 fn(Forms\Get $get) =>
-                                !in_array($get('tipe_nama'), ['penjual']) ||
-                                    !filled($get('info_hutang'))
+                                $get('tipe_nama') === 'penjual' &&
+                                    filled($get('penjual_id'))
                             )
                             ->extraAttributes([
-                                'class' => 'text-2xl font-bold text-yellow-400', // Ubah ukuran dan warna
-                                'style' => 'text-transform: uppercase;' // Buat huruf kapital
-                            ]),
+                                'class' => 'text-2xl font-bold text-yellow-400',
+                                'style' => 'text-transform: uppercase;'
+                            ])
+                            ->columnSpan('full'),
+                    ])
+                    ->columns(2),
 
+                // Section 3: Nominal dan Bukti
+                Forms\Components\Section::make('Nominal dan Bukti')
+                    ->description('Masukkan nominal dan upload bukti transaksi')
+                    ->schema([
                         Forms\Components\TextInput::make('nominal')
                             ->required()
                             ->numeric()
@@ -155,7 +185,6 @@ class OperasionalResource extends Resource
                                     $get('kategori_id') &&
                                     filled($get('jumlah_hutang'))
                                 ) {
-
                                     $nominal = (int) str_replace(['.', ','], ['', '.'], $state);
                                     $hutang = (int) $get('jumlah_hutang');
 
@@ -168,33 +197,41 @@ class OperasionalResource extends Resource
                                             ->send();
                                     }
                                 }
-                            }),
-
-                        // Select untuk User
-                        Forms\Components\Select::make('user_id')
-                            ->label('Nama Karyawan')
-                            ->relationship('user', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user'),
-
-
-                        Forms\Components\Hidden::make('is_from_transaksi')
-                            ->default(false),
+                            })
+                            ->columnSpan('full')
+                            ->visible(
+                                fn(Forms\Get $get) =>
+                                filled($get('tipe_nama')) &&
+                                    (
+                                        filled($get('penjual_id')) ||
+                                        filled($get('user_id'))
+                                    )
+                            ),
 
                         Forms\Components\TextInput::make('keterangan')
-                            ->maxLength(255),
+                            ->label('Keterangan')
+                            ->maxLength(255)
+                            ->columnSpan('full'),
 
                         Forms\Components\FileUpload::make('file_bukti')
                             ->label('Upload Bukti')
                             ->directory('bukti-operasional')
                             ->image()
                             ->imagePreviewHeight('250')
-                            ->maxSize(2048),
+                            ->maxSize(2048)
+                            ->columnSpan('full'),
+
+                        Forms\Components\Hidden::make('is_from_transaksi')
+                            ->default(false),
+
+                        Forms\Components\Hidden::make('jumlah_hutang')
+                            ->default(0),
                     ])
-                    ->columns(2)
+                    ->columns(2),
             ]);
     }
+
+
 
     public static function table(Table $table): Table
     {
