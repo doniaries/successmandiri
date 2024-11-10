@@ -6,8 +6,12 @@ use App\Filament\Resources\TransaksiDoResource;
 use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDoStatWidget;
 use App\Filament\Widgets\TransaksiDOWidget;
 use App\Filament\Widgets\TransaksiWidget;
-use Filament\Actions;
+use App\Models\Operasional; // Tambahkan ini
+use Illuminate\Support\Facades\DB; // Tambahkan ini
+use Filament\Actions;  // Ubah import ini
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Notifications\Notification;
 
 class ListTransaksiDos extends ListRecords
 {
@@ -16,7 +20,8 @@ class ListTransaksiDos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make(),  // Ubah ini
+
         ];
     }
 
@@ -24,6 +29,7 @@ class ListTransaksiDos extends ListRecords
     {
         return [
             TransaksiDoStatWidget::class,
+
         ];
     }
 

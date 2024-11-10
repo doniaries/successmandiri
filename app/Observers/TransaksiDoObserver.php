@@ -2,79 +2,49 @@
 
 namespace App\Observers;
 
+use App\Models\Operasional;
 use App\Models\TransaksiDo;
-use App\Models\Keuangan;
 
 class TransaksiDoObserver
 {
     public function created(TransaksiDo $transaksiDo)
     {
+        try {
+            DB::beginTransaction();
 
-        // 1. Jika cara bayar transfer, catat sebagai pemasukan ke saldo perusahaan
-        if ($transaksiDo->cara_bayar === 'Transfer') {
-            Keuangan::create([
+            // 1. Catat total DO sebagai pengeluaran
+            Operasional::create([
                 'tanggal' => $transaksiDo->tanggal,
-                'jenis' => 'pemasukan',
-                'kategori' => 'transfer_masuk',
-                'referensi_id' => $transaksiDo->id,
-                'nominal' => $transaksiDo->sisa_bayar,
-                'keterangan' => "Transfer masuk DO #{$transaksiDo->nomor}",
-                'created_by' => auth()->id(),
-            ]);
-            // Catat pengeluaran untuk transaksi DO
-            Keuangan::create([
-                'tanggal' => $transaksiDo->tanggal,
-                'jenis' => 'pengeluaran',
-                'kategori' => 'transaksi_do',
-                'referensi_id' => $transaksiDo->id,
+                'operasional' => 'pengeluaran',
+                'kategori_id' => KategoriOperasional::TOTAL_DO,
+                'tipe_nama' => 'penjual',
+                'penjual_id' => $transaksiDo->penjual_id,
                 'nominal' => $transaksiDo->total,
-                'keterangan' => "Transaksi DO #{$transaksiDo->nomor}",
-                'created_by' => auth()->id(),
+                'keterangan' => "Total DO #{$transaksiDo->nomor}",
+                'is_from_transaksi' => true,
             ]);
-        } else {
-            // Jika bukan transfer, catat hanya sebagai pengeluaran biasa
-            Keuangan::create([
-                'tanggal' => $transaksiDo->tanggal,
-                'jenis' => 'pengeluaran',
-                'kategori' => 'transaksi_do',
-                'referensi_id' => $transaksiDo->id,
-                'nominal' => $transaksiDo->sisa_bayar,
-                'keterangan' => "Pembayaran DO #{$transaksiDo->nomor} via {$transaksiDo->cara_bayar}",
-                'created_by' => auth()->id(),
+
+            // 2. Jika ada pembayaran hutang
+            if ($transaksiDo->bayar_hutang > 0) {
+                Operasional::create([
+                    'tanggal' => $transaksiDo->tanggal,
+                    'operasional' => 'pemasukan',
+                    'kategori_id' => KategoriOperasional::BAYAR_HUTANG,
+                    'tipe_nama' => 'penjual',
+                    'penjual_id' => $transaksiDo->penjual_id,
+                    'nominal' => $transaksiDo->bayar_hutang,
+                    'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}",
+                    'is_from_transaksi' => true,
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Error recording transaction: ' . $e->getMessage(), [
+                'transaksi_do' => $transaksiDo->toArray()
             ]);
+            throw $e;
         }
-
-        // 2. Jika ada pembayaran hutang, catat sebagai pemasukan
-        if ($transaksiDo->bayar_hutang > 0) {
-            Keuangan::create([
-                'tanggal' => $transaksiDo->tanggal,
-                'jenis' => 'pemasukan',
-                'kategori' => 'bayar_hutang',
-                'referensi_id' => $transaksiDo->id,
-                'nominal' => $transaksiDo->bayar_hutang,
-                'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}",
-                'created_by' => auth()->id(),
-            ]);
-        }
-    }
-
-    public function created(TransaksiDo $transaksiDo)
-    {
-        Keuangan::catatTransaksiDO($transaksiDo);
-    }
-
-    public function updated(TransaksiDo $transaksiDo)
-    {
-        // Hapus record keuangan yang lama
-        Keuangan::where('referensi_id', $transaksiDo->id)->delete();
-
-        // Buat ulang record
-        Keuangan::catatTransaksiDO($transaksiDo);
-    }
-
-    public function deleted(TransaksiDo $transaksiDo)
-    {
-        // Hapus semua record keuangan terkait
-        Keuangan::where('referensi_id', $transaksiDo->id)->delete();
     }
 }
