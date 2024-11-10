@@ -80,6 +80,9 @@ class PenjualResource extends Resource
                     ->color(fn($state) => $state > 0 ? 'danger' : 'success')
                     ->money('IDR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('riwayat_bayar')
+                    ->alignCenter()
+                    ->badge(),
             ])
             ->filters([
                 Tables\Filters\TrashedFilter::make(),

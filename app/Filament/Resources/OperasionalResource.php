@@ -38,9 +38,7 @@ class OperasionalResource extends Resource
                             ->timezone('Asia/Jakarta')
                             ->displayFormat('d/m/Y H:i')
                             ->default(now())
-                            ->disabled()
-                            ->required()
-                            ->dehydrated(),
+                            ->required(),
 
                         Forms\Components\Select::make('operasional')
                             ->label('Jenis Operasional')
@@ -74,10 +72,7 @@ class OperasionalResource extends Resource
                                     ->required(),
                                 Forms\Components\TextInput::make('keterangan')
                                     ->maxLength(255),
-                            ])
-                            ->visible(fn(Forms\Get $get) => $get('operasional') === 'pengeluaran')
-                            ->required(),
-
+                            ]),
                         Forms\Components\Select::make('tipe_nama')
                             ->label('Tipe')
                             ->options([
@@ -215,14 +210,6 @@ class OperasionalResource extends Resource
                         Forms\Components\TextInput::make('keterangan')
                             ->maxLength(255),
 
-                        Forms\Components\Hidden::make('is_from_transaksi')
-                            ->default(false),
-                        Forms\Components\Section::make()
-                            ->schema([
-                                Forms\Components\DateTimePicker::make('tanggal')
-                                    ->disabled(fn($record) => $record?->isFromTransaksi()),
-                            ]),
-
                         Forms\Components\FileUpload::make('file_bukti')
                             ->label('Upload Bukti')
                             ->directory('bukti-operasional')
@@ -239,10 +226,9 @@ class OperasionalResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('tanggal')
-                    ->label('Tanggal')
-                    ->badge()
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->searchable(),
 
                 Tables\Columns\TextColumn::make('operasional')
                     ->label('Jenis')
@@ -292,11 +278,7 @@ class OperasionalResource extends Resource
                         Tables\Columns\Summarizers\Sum::make()
                             ->money('IDR')
                     ]),
-                Tables\Columns\IconColumn::make('is_from_transaksi')
-                    ->label('Dari Transaksi')
-                    ->boolean()
-                    ->tooltip('Data ini berasal dari transaksi DO')
-                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('keterangan')
                     ->limit(30)
                     ->searchable(),
@@ -314,7 +296,6 @@ class OperasionalResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
                 SelectFilter::make('operasional')
                     ->label('Jenis Operasional')
                     ->options([
@@ -373,9 +354,9 @@ class OperasionalResource extends Resource
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-                Tables\Actions\ForceDeleteBulkAction::make(),
-                Tables\Actions\RestoreBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ])
             ->emptyStateHeading('Belum ada data operasional')
             ->emptyStateDescription('Silakan tambah data operasional baru dengan klik tombol di atas')
