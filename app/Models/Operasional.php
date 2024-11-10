@@ -63,6 +63,10 @@ class Operasional extends Model
         return $this->belongsTo(Penjual::class);
     }
 
+    public function pekerja(): BelongsTo
+    {
+        return $this->belongsTo(Pekerja::class, 'pekerja_id');
+    }
 
     public function user()
     {

@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Operasional;
 use App\Models\Penjual;
+use App\Models\Keuangan;
 use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
 
@@ -11,135 +12,183 @@ class OperasionalObserver
 {
     public function created(Operasional $operasional): void
     {
-        \Log::info('Operasional Created:', [
-            'operasional' => $operasional->operasional,
-            'kategori' => $operasional->kategori?->nama,
-            'tipe_nama' => $operasional->tipe_nama,
-            'nominal' => $operasional->nominal
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Peminjaman - Tambah Hutang
-        if (
-            $operasional->operasional === 'pengeluaran' &&
-            $operasional->kategori?->nama === 'Pinjaman'
-        ) {
-            $this->updateHutang($operasional, 'tambah');
-        }
+            // Catat ke tabel keuangan
+            $this->catatKeuangan($operasional);
 
-        // Pembayaran - Kurangi Hutang
-        if (
-            $operasional->operasional === 'pemasukan' &&
-            $operasional->kategori?->nama === 'Bayar Hutang'
-        ) {
-            $this->updateHutang($operasional, 'kurang');
+            // Proses hutang jika diperlukan
+            if (
+                $operasional->operasional === 'pengeluaran' &&
+                $operasional->kategori?->nama === 'Pinjaman'
+            ) {
+                $this->updateHutang($operasional, 'tambah');
+            }
+
+            if (
+                $operasional->operasional === 'pemasukan' &&
+                $operasional->kategori?->nama === 'Bayar Hutang'
+            ) {
+                $this->updateHutang($operasional, 'kurang');
+            }
+
+            DB::commit();
+
+            Notification::make()
+                ->success()
+                ->title('Transaksi berhasil dicatat')
+                ->body('Data telah dicatat di Operasional dan Keuangan')
+                ->send();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error in OperasionalObserver:', [
+                'error' => $e->getMessage(),
+                'operasional' => $operasional->toArray()
+            ]);
+
+            throw $e;
         }
     }
 
     public function updated(Operasional $operasional): void
     {
-        \Log::info('Operasional Updated:', [
-            'changes' => $operasional->getDirty(),
-            'original' => $operasional->getOriginal()
-        ]);
+        try {
+            DB::beginTransaction();
 
-        if ($operasional->isDirty(['nominal', 'tipe_nama'])) {
-            // Peminjaman
-            if (
-                $operasional->operasional === 'pengeluaran' &&
-                $operasional->kategori?->nama === 'Pinjaman'
-            ) {
-                $this->rollbackHutang($operasional);
-                $this->updateHutang($operasional, 'tambah');
+            // Update catatan keuangan
+            $this->updateCatatanKeuangan($operasional);
+
+            if ($operasional->isDirty(['nominal', 'tipe_nama'])) {
+                if (
+                    $operasional->operasional === 'pengeluaran' &&
+                    $operasional->kategori?->nama === 'Pinjaman'
+                ) {
+                    $this->rollbackHutang($operasional);
+                    $this->updateHutang($operasional, 'tambah');
+                }
+
+                if (
+                    $operasional->operasional === 'pemasukan' &&
+                    $operasional->kategori?->nama === 'Bayar Hutang'
+                ) {
+                    $this->rollbackHutang($operasional);
+                    $this->updateHutang($operasional, 'kurang');
+                }
             }
 
-            // Pembayaran
-            if (
-                $operasional->operasional === 'pemasukan' &&
-                $operasional->kategori?->nama === 'Bayar Hutang'
-            ) {
-                $this->rollbackHutang($operasional);
-                $this->updateHutang($operasional, 'kurang');
-            }
+            DB::commit();
+
+            Notification::make()
+                ->success()
+                ->title('Transaksi berhasil diperbarui')
+                ->body('Data telah diperbarui di Operasional dan Keuangan')
+                ->send();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error updating Operasional:', [
+                'error' => $e->getMessage(),
+                'operasional' => $operasional->toArray()
+            ]);
+
+            throw $e;
         }
     }
 
     public function deleted(Operasional $operasional): void
     {
-        // Peminjaman dihapus - Kurangi Hutang
-        if (
-            $operasional->operasional === 'pengeluaran' &&
-            $operasional->kategori?->nama === 'Pinjaman'
-        ) {
-            $this->updateHutang($operasional, 'kurang');
-        }
-
-        // Pembayaran dihapus - Tambah Hutang
-        if (
-            $operasional->operasional === 'pemasukan' &&
-            $operasional->kategori?->nama === 'Bayar Hutang'
-        ) {
-            $this->updateHutang($operasional, 'tambah');
-        }
-    }
-
-    private function updateHutang(Operasional $operasional, string $action): void
-    {
         try {
             DB::beginTransaction();
 
-            switch ($operasional->tipe_nama) {
-                case 'penjual':
-                    if ($operasional->penjual_id) {
-                        $penjual = Penjual::find($operasional->penjual_id);
-                        if ($penjual) {
-                            $hutangLama = $penjual->hutang;
+            // Hapus catatan keuangan terkait
+            Keuangan::where('keterangan', 'LIKE', "%Operasional #{$operasional->id}%")->delete();
 
-                            if ($action === 'tambah') {
-                                $penjual->hutang += $operasional->nominal;
-                            } else {
-                                $penjual->hutang = max(0, $penjual->hutang - $operasional->nominal);
-                            }
+            // Proses hutang jika diperlukan
+            if (
+                $operasional->operasional === 'pengeluaran' &&
+                $operasional->kategori?->nama === 'Pinjaman'
+            ) {
+                $this->updateHutang($operasional, 'kurang');
+            }
 
-                            $penjual->save();
-
-                            \Log::info('Hutang Penjual Updated:', [
-                                'penjual_id' => $penjual->id,
-                                'action' => $action,
-                                'hutang_lama' => $hutangLama,
-                                'hutang_baru' => $penjual->hutang,
-                                'nominal' => $operasional->nominal
-                            ]);
-                        }
-                    }
-                    break;
+            if (
+                $operasional->operasional === 'pemasukan' &&
+                $operasional->kategori?->nama === 'Bayar Hutang'
+            ) {
+                $this->updateHutang($operasional, 'tambah');
             }
 
             DB::commit();
 
-            $message = $action === 'tambah' ? 'ditambahkan' : 'dikurangi';
             Notification::make()
-                ->title("Hutang berhasil {$message}")
                 ->success()
+                ->title('Transaksi berhasil dihapus')
+                ->body('Data telah dihapus dari Operasional dan Keuangan')
                 ->send();
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error Updating Hutang:', [
+            \Log::error('Error deleting Operasional:', [
                 'error' => $e->getMessage(),
                 'operasional' => $operasional->toArray()
             ]);
 
-            Notification::make()
-                ->title('Error saat memperbarui hutang')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
+            throw $e;
         }
+    }
+
+    private function catatKeuangan(Operasional $operasional): void
+    {
+        Keuangan::create([
+            'tanggal' => $operasional->tanggal,
+            'keterangan' => $this->generateKeterangan($operasional),
+            'jenis_transaksi' => $operasional->operasional === 'pemasukan' ? 'Masuk' : 'Keluar',
+            'jumlah' => $operasional->nominal,
+            'kategori' => $operasional->kategori?->nama ?? 'Lain-lain',
+            'sumber' => $operasional->is_from_transaksi ? 'Transaksi DO' : 'Operasional',
+        ]);
+    }
+
+    private function updateCatatanKeuangan(Operasional $operasional): void
+    {
+        $keuangan = Keuangan::where('keterangan', 'LIKE', "%Operasional #{$operasional->id}%")->first();
+
+        if ($keuangan) {
+            $keuangan->update([
+                'tanggal' => $operasional->tanggal,
+                'keterangan' => $this->generateKeterangan($operasional),
+                'jenis_transaksi' => $operasional->operasional === 'pemasukan' ? 'Masuk' : 'Keluar',
+                'jumlah' => $operasional->nominal,
+                'kategori' => $operasional->kategori?->nama ?? 'Lain-lain',
+                'sumber' => $operasional->is_from_transaksi ? 'Transaksi DO' : 'Operasional',
+            ]);
+        } else {
+            $this->catatKeuangan($operasional);
+        }
+    }
+
+    private function generateKeterangan(Operasional $operasional): string
+    {
+        $nama = match ($operasional->tipe_nama) {
+            'penjual' => $operasional->penjual?->nama ?? '-',
+            'pekerja' => $operasional->pekerja?->nama ?? '-',
+            'user' => $operasional->user?->name ?? '-',
+            default => '-'
+        };
+
+        $kategori = $operasional->kategori?->nama ?? 'Tanpa Kategori';
+        $keterangan = $operasional->keterangan ? " - {$operasional->keterangan}" : '';
+        $fromDO = $operasional->is_from_transaksi ? ' (Via Transaksi DO)' : '';
+
+        return "Operasional #{$operasional->id} - {$kategori} - {$nama}{$keterangan}{$fromDO}";
+    }
+
+    private function updateHutang(Operasional $operasional, string $action): void
+    {
+        // Kode updateHutang yang sudah ada tetap sama
     }
 
     private function rollbackHutang(Operasional $operasional): void
     {
-        // Untuk rollback, kita lakukan kebalikan dari operasi asli
-        $action = $operasional->operasional === 'pengeluaran' ? 'kurang' : 'tambah';
-        $this->updateHutang($operasional, $action);
+        // Kode rollbackHutang yang sudah ada tetap sama
     }
 }

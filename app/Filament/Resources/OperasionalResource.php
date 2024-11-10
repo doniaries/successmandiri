@@ -95,20 +95,21 @@ class OperasionalResource extends Resource
                             ->options([
                                 'penjual' => 'Penjual',
                                 'user' => 'Karyawan',
-                                'Pekerja' => 'Pekerja',
+                                'pekerja' => 'Pekerja',
                             ])
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Forms\Set $set) {
                                 $set('penjual_id', null);
                                 $set('user_id', null);
+                                $set('pekerja_id', null);
                                 $set('info_hutang', null);
                                 $set('jumlah_hutang', 0);
                             })
                             ->columnSpan('full')
                             ->visible(fn(Forms\Get $get) => filled($get('kategori_id'))),
 
-                        // Field Penjual - muncul jika tipe penjual dipilih
+                        // Field Penjual
                         Forms\Components\Select::make('penjual_id')
                             ->label('Nama Penjual')
                             ->relationship('penjual', 'nama')
@@ -139,12 +140,61 @@ class OperasionalResource extends Resource
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual')
                             ->columnSpan('full'),
 
-                        // Field User/Karyawan - muncul jika tipe user dipilih
+                        // Field Pekerja
+                        Forms\Components\Select::make('pekerja_id')
+                            ->label('Nama Pekerja')
+                            ->relationship(
+                                name: 'pekerja',
+                                titleAttribute: 'nama',
+                                modifyQueryUsing: fn(Builder $query) => $query->whereNull('deleted_at')
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('nama')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->label('Nama Pekerja'),
+                                Forms\Components\TextInput::make('alamat')
+                                    ->maxLength(255)
+                                    ->label('Alamat'),
+                                Forms\Components\TextInput::make('telepon')
+                                    ->maxLength(255)
+                                    ->label('No. Telepon'),
+                                Forms\Components\TextInput::make('pendapatan')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('Rp')
+                                    ->label('Pendapatan'),
+                                Forms\Components\TextInput::make('hutang')
+                                    ->numeric()
+                                    ->default(0)
+                                    ->prefix('Rp')
+                                    ->label('Hutang'),
+                            ])
+                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                if ($state) {
+                                    $pekerja = \App\Models\Pekerja::find($state);
+                                    if ($pekerja) {
+                                        $set('info_hutang', "Rp " . number_format($pekerja->hutang, 0, ',', '.'));
+                                        $set('jumlah_hutang', $pekerja->hutang);
+                                    }
+                                } else {
+                                    $set('info_hutang', null);
+                                    $set('jumlah_hutang', 0);
+                                }
+                            })
+                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja')
+                            ->columnSpan('full'),
+
+                        // Field User/Karyawan
                         Forms\Components\Select::make('user_id')
                             ->label('Nama Karyawan')
                             ->relationship('user', 'name')
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user')
                             ->columnSpan('full'),
 
@@ -154,8 +204,8 @@ class OperasionalResource extends Resource
                             ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
                             ->visible(
                                 fn(Forms\Get $get) =>
-                                $get('tipe_nama') === 'penjual' &&
-                                    filled($get('penjual_id'))
+                                in_array($get('tipe_nama'), ['penjual', 'pekerja']) &&
+                                    (filled($get('penjual_id')) || filled($get('pekerja_id')))
                             )
                             ->extraAttributes([
                                 'class' => 'text-2xl font-bold text-yellow-400',
@@ -165,7 +215,7 @@ class OperasionalResource extends Resource
                     ])
                     ->columns(2),
 
-                // Section 3: Nominal dan Bukti
+                // Section 3: Nominal dan Bukti - Perbaikan kondisi visible
                 Forms\Components\Section::make('Nominal dan Bukti')
                     ->description('Masukkan nominal dan upload bukti transaksi')
                     ->schema([
@@ -204,7 +254,8 @@ class OperasionalResource extends Resource
                                 filled($get('tipe_nama')) &&
                                     (
                                         filled($get('penjual_id')) ||
-                                        filled($get('user_id'))
+                                        filled($get('user_id')) ||
+                                        filled($get('pekerja_id'))
                                     )
                             ),
 
