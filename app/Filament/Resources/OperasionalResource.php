@@ -219,6 +219,14 @@ class OperasionalResource extends Resource
                         Forms\Components\TextInput::make('keterangan')
                             ->maxLength(255),
 
+                        Forms\Components\Hidden::make('is_from_transaksi')
+                            ->default(false),
+                        Forms\Components\Section::make()
+                            ->schema([
+                                Forms\Components\DateTimePicker::make('tanggal')
+                                    ->disabled(fn($record) => $record?->isFromTransaksi()),
+                            ]),
+
                         Forms\Components\FileUpload::make('file_bukti')
                             ->label('Upload Bukti')
                             ->directory('bukti-operasional')
@@ -288,7 +296,11 @@ class OperasionalResource extends Resource
                         Tables\Columns\Summarizers\Sum::make()
                             ->money('IDR')
                     ]),
-
+                Tables\Columns\IconColumn::make('is_from_transaksi')
+                    ->label('Dari Transaksi')
+                    ->boolean()
+                    ->tooltip('Data ini berasal dari transaksi DO')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('keterangan')
                     ->limit(30)
                     ->searchable(),

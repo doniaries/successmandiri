@@ -88,4 +88,21 @@ class Operasional extends Model
     {
         return $this->belongsTo(KategoriOperasional::class, 'kategori_id');
     }
+
+    // Helper method untuk cek apakah data dari transaksi
+    public function isFromTransaksi(): bool
+    {
+        return $this->is_from_transaksi;
+    }
+
+    // Scope untuk query
+    public function scopeManualEntry($query)
+    {
+        return $query->where('is_from_transaksi', false);
+    }
+
+    public function scopeFromTransaksi($query)
+    {
+        return $query->where('is_from_transaksi', true);
+    }
 }
