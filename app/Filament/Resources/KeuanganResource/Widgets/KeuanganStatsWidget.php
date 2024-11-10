@@ -9,7 +9,16 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class KeuanganStatsWidget extends BaseWidget
 {
-    protected static ?string $pollingInterval = null;
+    // Set polling interval ke 5 detik
+    protected static ?string $pollingInterval = '5s';
+
+    // Aktifkan polling hanya di halaman yang sedang dilihat
+    public bool $readyToLoad = false;
+
+    public function loadData()
+    {
+        $this->readyToLoad = true;
+    }
 
     protected function getStats(): array
     {
@@ -28,7 +37,12 @@ class KeuanganStatsWidget extends BaseWidget
             Stat::make('Saldo Perusahaan', 'Rp ' . number_format($saldoPerusahaan, 0, ',', '.'))
                 ->description('Total saldo tersedia')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color('success'),
+                ->color('success')
+                ->chart([1, 1, 1, 1, 1, 1, 1]) // Garis lurus untuk menunjukkan stabilitas
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                    'wire:init' => 'loadData'
+                ]),
 
             Stat::make('Total Uang Masuk', 'Rp ' . number_format($totalMasuk, 0, ',', '.'))
                 ->description('Total semua pemasukan')
