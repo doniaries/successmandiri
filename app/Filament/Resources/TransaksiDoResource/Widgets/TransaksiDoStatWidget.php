@@ -4,7 +4,6 @@ namespace App\Filament\Resources\TransaksiDoResource\Widgets;
 
 use App\Models\TransaksiDo;
 use App\Models\Perusahaan;
-use App\Models\Operasional;
 use Illuminate\Support\Facades\DB;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -19,131 +18,92 @@ class TransaksiDoStatWidget extends BaseWidget
     protected function getStats(): array
     {
         $today = now()->today();
-        $startOfMonth = now()->startOfMonth();
 
         // Get saldo from perusahaan
         $saldoPerusahaan = Perusahaan::first()?->saldo ?? 0;
 
-
-        // Kalkulasi Pemasukan Hari Ini
-        $pemasukanHariIni = TransaksiDo::whereDate('created_at', $today)
+        // Kalkulasi transaksi hari ini
+        $transaksiHariIni = TransaksiDo::whereDate('created_at', $today)
             ->select(DB::raw('
                 COUNT(*) as jumlah_transaksi,
-                SUM(total) as total_do,
-                SUM(total - sisa_bayar) as total_pemasukan,
+                SUM(bayar_hutang + biaya_lain + upah_bongkar) as total_pemasukan,
+                SUM(sisa_bayar) as total_pengeluaran,
                 SUM(tonase) as total_tonase
             '))
             ->first();
 
-        // Data chart untuk 7 hari terakhir
-        $chartData = TransaksiDo::select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(tonase) as total_tonase'))
+        // Data chart untuk trend pemasukan 7 hari terakhir
+        $trendPemasukan = $this->hitungTrendTransaksi('pemasukan');
+
+        // Data chart untuk trend pengeluaran 7 hari terakhir
+        $trendPengeluaran = $this->hitungTrendTransaksi('pengeluaran');
+
+        // Data chart untuk tonase 7 hari terakhir
+        $chartTonase = TransaksiDo::select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(tonase) as total_tonase'))
             ->whereBetween('created_at', [Carbon::now()->subDays(7), Carbon::now()])
             ->groupBy('date')
             ->orderBy('date', 'asc')
             ->get()
             ->pluck('total_tonase')
+            ->map(fn($value) => $value ?? 0)
             ->toArray();
 
-        // Hitung saldo perusahaan hari ini
-        $saldoHariIni = $this->hitungSaldoHariIni();
-        $saldoKemarin = $this->hitungSaldoKemarin();
-        $perubahanSaldo = $saldoKemarin != 0 ?
-            (($saldoHariIni - $saldoKemarin) / $saldoKemarin) * 100 :
-            0;
-
-        // Data chart untuk trend saldo 7 hari terakhir
-        $trendSaldo = $this->hitungTrendSaldo();
-
         return [
-            // Stat Saldo Perusahaan (Ditambahkan di awal)
             Stat::make('Saldo Perusahaan', 'Rp ' . number_format($saldoPerusahaan, 0, ',', '.'))
                 ->description('Total saldo tersedia')
                 ->descriptionIcon('heroicon-m-banknotes')
                 ->color('success'),
 
-            // Stat yang sudah ada sebelumnya
-            Stat::make('Pemasukan Hari Ini', 'Rp ' . number_format($pemasukanHariIni->total_pemasukan ?? 0, 0, ',', '.'))
-                ->description('Total ' . ($pemasukanHariIni->jumlah_transaksi ?? 0) . ' DO, ' . number_format($pemasukanHariIni->total_tonase ?? 0, 0, ',', '.') . ' Kg')
-                ->icon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+            Stat::make('Total Uang Masuk', 'Rp ' . number_format($transaksiHariIni->total_pemasukan ?? 0, 0, ',', '.'))
+                ->description('Hutang + Biaya Lain + Upah Bongkar')
+                ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->color('success')
+                ->chart($trendPemasukan)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all hover:scale-105',
+                ]),
 
-            Stat::make('Nilai DO Hari Ini', 'Rp ' . number_format($pemasukanHariIni->total_do ?? 0, 0, ',', '.'))
-                ->description('Total transaksi DO hari ini')
-                ->icon('heroicon-m-banknotes')
-                ->color('info'),
+            Stat::make('Total Uang Keluar', 'Rp ' . number_format($transaksiHariIni->total_pengeluaran ?? 0, 0, ',', '.'))
+                ->description('Total Sisa Bayar')
+                ->descriptionIcon('heroicon-m-arrow-trending-down')
+                ->color('danger')
+                ->chart($trendPengeluaran)
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all hover:scale-105',
+                ]),
 
-            Stat::make('Total Sawit Masuk Hari Ini', number_format($pemasukanHariIni->total_tonase ?? 0, 0, ',', '.') . ' Kg')
-                ->description('Tanggal ' . Carbon::today()->format('d F Y'))
+            Stat::make('Total Sawit Masuk', number_format($transaksiHariIni->total_tonase ?? 0, 0, ',', '.') . ' Kg')
+                ->description('Total ' . ($transaksiHariIni->jumlah_transaksi ?? 0) . ' Transaksi')
                 ->descriptionIcon('heroicon-m-scale')
-                ->chart($chartData)
-                ->chartColor('success')
+                ->color('success')
+                ->chart($chartTonase)
                 ->extraAttributes([
                     'class' => 'cursor-pointer transition-all hover:scale-105',
                 ]),
         ];
     }
 
-    private function hitungSaldoHariIni(): float
+    private function hitungTrendTransaksi(string $tipe): array
     {
-        $tanggal = Carbon::today();
+        $data = TransaksiDo::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw(
+                $tipe === 'pemasukan'
+                    ? 'SUM(bayar_hutang + biaya_lain + upah_bongkar) as total'
+                    : 'SUM(sisa_bayar) as total'
+            )
+        )
+            ->whereBetween('created_at', [Carbon::now()->subDays(7), Carbon::now()])
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get()
+            ->pluck('total')
+            ->map(fn($value) => $value ?? 0)
+            ->toArray();
 
-        // Pemasukan dari Transaksi DO
-        $pemasukan = TransaksiDo::whereDate('created_at', $tanggal)
-            ->sum('sisa_bayar');
+        // Pastikan array memiliki 7 elemen, isi 0 jika tidak ada data
+        $fullData = array_pad($data, 7, 0);
 
-        // Pengeluaran dari Operasional
-        $pengeluaran = Operasional::whereDate('created_at', $tanggal)
-            ->where('operasional', '!=', 'isi_saldo')
-            ->sum('nominal');
-
-        // Tambahan saldo dari isi_saldo
-        $isiSaldo = Operasional::whereDate('created_at', $tanggal)
-            ->where('operasional', 'isi_saldo')
-            ->sum('nominal');
-
-        return $pemasukan - $pengeluaran + $isiSaldo;
-    }
-
-    private function hitungSaldoKemarin(): float
-    {
-        $tanggal = Carbon::yesterday();
-
-        $pemasukan = TransaksiDo::whereDate('created_at', $tanggal)
-            ->sum('sisa_bayar');
-
-        $pengeluaran = Operasional::whereDate('created_at', $tanggal)
-            ->where('operasional', '!=', 'isi_saldo')
-            ->sum('nominal');
-
-        $isiSaldo = Operasional::whereDate('created_at', $tanggal)
-            ->where('operasional', 'isi_saldo')
-            ->sum('nominal');
-
-        return $pemasukan - $pengeluaran + $isiSaldo;
-    }
-
-    private function hitungTrendSaldo(): array
-    {
-        $trendSaldo = [];
-
-        // Hitung saldo untuk 7 hari terakhir
-        for ($i = 6; $i >= 0; $i--) {
-            $tanggal = Carbon::today()->subDays($i);
-
-            $pemasukan = TransaksiDo::whereDate('created_at', $tanggal)
-                ->sum('sisa_bayar');
-
-            $pengeluaran = Operasional::whereDate('created_at', $tanggal)
-                ->where('operasional', '!=', 'isi_saldo')
-                ->sum('nominal');
-
-            $isiSaldo = Operasional::whereDate('created_at', $tanggal)
-                ->where('operasional', 'isi_saldo')
-                ->sum('nominal');
-
-            $trendSaldo[] = $pemasukan - $pengeluaran + $isiSaldo;
-        }
-
-        return $trendSaldo;
+        return array_slice($fullData, -7); // Ambil 7 data terakhir
     }
 }

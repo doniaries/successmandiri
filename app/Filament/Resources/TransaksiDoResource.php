@@ -4,21 +4,17 @@ namespace App\Filament\Resources;
 
 use Filament\Forms;
 use Filament\Tables;
-use App\Models\Penjual;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\TransaksiDo;
+use App\Models\Penjual;
 use Filament\Resources\Resource;
+use Filament\Tables\Actions\Action;
 use Filament\Support\Colors\Color;
-use Filament\Tables\Columns\ColorColumn;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\TransaksiDoResource\Pages;
-use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDOWidget;
-use Filament\Tables\Columns\Summarizers\Count;
-use Filament\Support\Enums\IconPosition;
-use Filament\Tables\Actions\Action;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Builder;
 
 
 class TransaksiDoResource extends Resource
@@ -197,6 +193,14 @@ class TransaksiDoResource extends Resource
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungPembayaranHutang($state, $get, $set)),
+                                    Forms\Components\Select::make('status_bayar')
+                                        ->label('Status Bayar')
+                                        ->options([
+                                            'Lunas' => 'Lunas',
+                                            'Belum Lunas' => 'Belum Lunas',
+                                        ])
+                                        // ->default('Lunas')
+                                        ->required(),
                                     Forms\Components\Select::make('cara_bayar')
                                         ->label('Cara Bayar')
                                         ->options([
@@ -206,14 +210,7 @@ class TransaksiDoResource extends Resource
                                         ])
                                         ->default('Tunai')
                                         ->required(),
-                                    Forms\Components\Select::make('status_bayar')
-                                        ->label('Status Bayar')
-                                        ->options([
-                                            'Lunas' => 'Lunas',
-                                            'Belum Lunas' => 'Belum Lunas',
-                                        ])
-                                        // ->default('Lunas')
-                                        ->required(),
+
                                     Forms\Components\TextInput::make('catatan')
                                         ->label('Catatan'),
                                     Forms\Components\FileUpload::make('file_do')
@@ -381,15 +378,6 @@ class TransaksiDoResource extends Resource
                     ])
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('cara_bayar')
-                    ->label('Cara Bayar')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'Tunai' => 'success',
-                        'Transfer' => 'info',
-                        default => 'gray',
-                    }),
-
                 Tables\Columns\TextColumn::make('status_bayar')
                     ->label('Status Bayar')
                     ->badge()
@@ -398,7 +386,14 @@ class TransaksiDoResource extends Resource
                         'Belum Lunas' => 'warning',
                         default => 'gray',
                     }),
-
+                Tables\Columns\TextColumn::make('cara_bayar')
+                    ->label('Cara Bayar')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Tunai' => 'success',
+                        'Transfer' => 'info',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
@@ -427,24 +422,26 @@ class TransaksiDoResource extends Resource
     // Helper methods untuk kalkulasi
     private static function hitungTotal($state, Forms\Get $get, Forms\Set $set): void
     {
-        $tonase = (int)$get('tonase');
-        $hargaSatuan = (int)$get('harga_satuan');
+        $tonase = self::formatCurrency($get('tonase'));
+        $hargaSatuan = self::formatCurrency($get('harga_satuan'));
 
         if ($tonase && $hargaSatuan) {
             $total = $tonase * $hargaSatuan;
             $set('total', $total);
 
-            // Ambil semua komponen pengurangan
-            $upahBongkar = (int)$get('upah_bongkar') ?? 0;
-            $biayaLain = (int)$get('biaya_lain') ?? 0;
-            $bayarHutang = (int)$get('bayar_hutang') ?? 0;  // Tambahkan ini
+            $upahBongkar = self::formatCurrency($get('upah_bongkar'));
+            $biayaLain = self::formatCurrency($get('biaya_lain'));
+            $bayarHutang = self::formatCurrency($get('bayar_hutang'));
 
-            // Hitung sisa bayar dengan memasukkan biaya lain
             $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
-            $set('sisa_bayar', $sisaBayar);
+            $set('sisa_bayar', max(0, $sisaBayar));
         }
     }
 
+    private static function formatCurrency($number): int
+    {
+        return (int)str_replace(['.', ','], ['', '.'], $number ?? 0);
+    }
 
     private static function hitungSisaBayar($state, Forms\Get $get, Forms\Set $set): void
     {
@@ -549,5 +546,10 @@ class TransaksiDoResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'primary';
     }
 }
