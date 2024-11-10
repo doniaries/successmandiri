@@ -35,6 +35,12 @@ class TransaksiDoResource extends Resource
         return static::getModel()::count();
     }
 
+    public static function getModel(): string
+    {
+        return TransaksiDo::class;
+    }
+
+
     public static function form(Form $form): Form
     {
         return $form->schema([
