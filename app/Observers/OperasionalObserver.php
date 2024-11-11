@@ -4,7 +4,8 @@ namespace App\Observers;
 
 use App\Models\Operasional;
 use App\Models\Penjual;
-use App\Models\Keuangan;
+use App\Models\LaporanKeuangan;
+use App\Models\Perusahaan;
 use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
 
@@ -15,38 +16,42 @@ class OperasionalObserver
         try {
             DB::beginTransaction();
 
-            // Catat ke tabel keuangan
-            $this->catatKeuangan($operasional);
+            // Get saldo terkini
+            $saldoSekarang = Perusahaan::query()
+                ->where('id', auth()->user()->perusahaan_id)
+                ->value('saldo') ?? 0;
 
-            // Proses hutang jika diperlukan
-            if (
-                $operasional->operasional === 'pengeluaran' &&
-                $operasional->kategori?->nama === 'Pinjaman'
-            ) {
-                $this->updateHutang($operasional, 'tambah');
-            }
+            // Catat ke laporan keuangan
+            LaporanKeuangan::create([
+                'tanggal' => $operasional->tanggal,
+                'jenis' => $operasional->operasional === 'pemasukan' ? 'masuk' : 'keluar',
+                'tipe_transaksi' => 'operasional',
+                'kategori_operasional_id' => $operasional->kategori_id,
+                'keterangan' => $this->generateKeterangan($operasional),
+                'nominal' => $operasional->nominal,
+                'saldo_sebelum' => $saldoSekarang,
+                'saldo_sesudah' => $operasional->operasional === 'pemasukan' ?
+                    $saldoSekarang + $operasional->nominal :
+                    $saldoSekarang - $operasional->nominal,
+                'operasional_id' => $operasional->id,
+                'created_by' => auth()->id()
+            ]);
 
-            if (
-                $operasional->operasional === 'pemasukan' &&
-                $operasional->kategori?->nama === 'Bayar Hutang'
-            ) {
-                $this->updateHutang($operasional, 'kurang');
-            }
+            // Update saldo perusahaan
+            Perusahaan::query()
+                ->where('id', auth()->user()->perusahaan_id)
+                ->{$operasional->operasional === 'pemasukan' ? 'increment' : 'decrement'}('saldo', $operasional->nominal);
+
+            // Proses hutang
+            $this->processHutang($operasional);
 
             DB::commit();
 
-            Notification::make()
-                ->success()
-                ->title('Transaksi berhasil dicatat')
-                ->body('Data telah dicatat di Operasional dan Keuangan')
-                ->send();
+            // Show appropriate notification
+            $this->showTransactionNotification($operasional, 'created');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error in OperasionalObserver:', [
-                'error' => $e->getMessage(),
-                'operasional' => $operasional->toArray()
-            ]);
-
+            $this->logAndNotifyError('created', $e, $operasional);
             throw $e;
         }
     }
@@ -56,41 +61,54 @@ class OperasionalObserver
         try {
             DB::beginTransaction();
 
-            // Update catatan keuangan
-            $this->updateCatatanKeuangan($operasional);
+            // Get saldo before changes
+            $saldoSekarang = Perusahaan::query()
+                ->where('id', auth()->user()->perusahaan_id)
+                ->value('saldo') ?? 0;
 
+            // First restore previous saldo
+            $oldRecord = LaporanKeuangan::where('operasional_id', $operasional->id)->first();
+            if ($oldRecord) {
+                Perusahaan::query()
+                    ->where('id', auth()->user()->perusahaan_id)
+                    ->{$oldRecord->jenis === 'masuk' ? 'decrement' : 'increment'}('saldo', $oldRecord->nominal);
+
+                $oldRecord->delete();
+            }
+
+            // Create new record
+            LaporanKeuangan::create([
+                'tanggal' => $operasional->tanggal,
+                'jenis' => $operasional->operasional === 'pemasukan' ? 'masuk' : 'keluar',
+                'tipe_transaksi' => 'operasional',
+                'kategori_operasional_id' => $operasional->kategori_id,
+                'keterangan' => $this->generateKeterangan($operasional),
+                'nominal' => $operasional->nominal,
+                'saldo_sebelum' => $saldoSekarang,
+                'saldo_sesudah' => $operasional->operasional === 'pemasukan' ?
+                    $saldoSekarang + $operasional->nominal :
+                    $saldoSekarang - $operasional->nominal,
+                'operasional_id' => $operasional->id,
+                'created_by' => auth()->id()
+            ]);
+
+            // Update new saldo
+            Perusahaan::query()
+                ->where('id', auth()->user()->perusahaan_id)
+                ->{$operasional->operasional === 'pemasukan' ? 'increment' : 'decrement'}('saldo', $operasional->nominal);
+
+            // Process hutang changes if any
             if ($operasional->isDirty(['nominal', 'tipe_nama'])) {
-                if (
-                    $operasional->operasional === 'pengeluaran' &&
-                    $operasional->kategori?->nama === 'Pinjaman'
-                ) {
-                    $this->rollbackHutang($operasional);
-                    $this->updateHutang($operasional, 'tambah');
-                }
-
-                if (
-                    $operasional->operasional === 'pemasukan' &&
-                    $operasional->kategori?->nama === 'Bayar Hutang'
-                ) {
-                    $this->rollbackHutang($operasional);
-                    $this->updateHutang($operasional, 'kurang');
-                }
+                $this->rollbackHutang($operasional);
+                $this->processHutang($operasional);
             }
 
             DB::commit();
 
-            Notification::make()
-                ->success()
-                ->title('Transaksi berhasil diperbarui')
-                ->body('Data telah diperbarui di Operasional dan Keuangan')
-                ->send();
+            $this->showTransactionNotification($operasional, 'updated');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error updating Operasional:', [
-                'error' => $e->getMessage(),
-                'operasional' => $operasional->toArray()
-            ]);
-
+            $this->logAndNotifyError('updated', $e, $operasional);
             throw $e;
         }
     }
@@ -100,69 +118,63 @@ class OperasionalObserver
         try {
             DB::beginTransaction();
 
-            // Hapus catatan keuangan terkait
-            Keuangan::where('keterangan', 'LIKE', "%Operasional #{$operasional->id}%")->delete();
+            // Get record from laporan keuangan
+            $record = LaporanKeuangan::where('operasional_id', $operasional->id)->first();
 
-            // Proses hutang jika diperlukan
-            if (
-                $operasional->operasional === 'pengeluaran' &&
-                $operasional->kategori?->nama === 'Pinjaman'
-            ) {
-                $this->updateHutang($operasional, 'kurang');
+            if ($record) {
+                // Restore saldo
+                Perusahaan::query()
+                    ->where('id', auth()->user()->perusahaan_id)
+                    ->{$record->jenis === 'masuk' ? 'decrement' : 'increment'}('saldo', $record->nominal);
+
+                // Delete record
+                $record->delete();
             }
 
-            if (
-                $operasional->operasional === 'pemasukan' &&
-                $operasional->kategori?->nama === 'Bayar Hutang'
-            ) {
-                $this->updateHutang($operasional, 'tambah');
-            }
+            // Rollback hutang if applicable
+            $this->rollbackHutang($operasional);
 
             DB::commit();
 
-            Notification::make()
-                ->success()
-                ->title('Transaksi berhasil dihapus')
-                ->body('Data telah dihapus dari Operasional dan Keuangan')
-                ->send();
+            $this->showTransactionNotification($operasional, 'deleted');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Error deleting Operasional:', [
-                'error' => $e->getMessage(),
-                'operasional' => $operasional->toArray()
-            ]);
-
+            $this->logAndNotifyError('deleted', $e, $operasional);
             throw $e;
         }
     }
 
-    private function catatKeuangan(Operasional $operasional): void
+    private function processHutang(Operasional $operasional): void
     {
-        Keuangan::create([
-            'tanggal' => $operasional->tanggal,
-            'keterangan' => $this->generateKeterangan($operasional),
-            'jenis_transaksi' => $operasional->operasional === 'pemasukan' ? 'Masuk' : 'Keluar',
-            'jumlah' => $operasional->nominal,
-            'kategori' => $operasional->kategori?->nama ?? 'Lain-lain',
-            'sumber' => $operasional->is_from_transaksi ? 'Transaksi DO' : 'Operasional',
-        ]);
+        if ($operasional->operasional === 'pengeluaran' && $operasional->kategori?->nama === 'Pinjaman') {
+            if ($operasional->tipe_nama === 'penjual' && $operasional->penjual_id) {
+                Penjual::where('id', $operasional->penjual_id)
+                    ->increment('hutang', $operasional->nominal);
+            }
+        }
+
+        if ($operasional->operasional === 'pemasukan' && $operasional->kategori?->nama === 'Bayar Hutang') {
+            if ($operasional->tipe_nama === 'penjual' && $operasional->penjual_id) {
+                Penjual::where('id', $operasional->penjual_id)
+                    ->decrement('hutang', $operasional->nominal);
+            }
+        }
     }
 
-    private function updateCatatanKeuangan(Operasional $operasional): void
+    private function rollbackHutang(Operasional $operasional): void
     {
-        $keuangan = Keuangan::where('keterangan', 'LIKE', "%Operasional #{$operasional->id}%")->first();
+        if ($operasional->operasional === 'pengeluaran' && $operasional->kategori?->nama === 'Pinjaman') {
+            if ($operasional->tipe_nama === 'penjual' && $operasional->penjual_id) {
+                Penjual::where('id', $operasional->penjual_id)
+                    ->decrement('hutang', $operasional->nominal);
+            }
+        }
 
-        if ($keuangan) {
-            $keuangan->update([
-                'tanggal' => $operasional->tanggal,
-                'keterangan' => $this->generateKeterangan($operasional),
-                'jenis_transaksi' => $operasional->operasional === 'pemasukan' ? 'Masuk' : 'Keluar',
-                'jumlah' => $operasional->nominal,
-                'kategori' => $operasional->kategori?->nama ?? 'Lain-lain',
-                'sumber' => $operasional->is_from_transaksi ? 'Transaksi DO' : 'Operasional',
-            ]);
-        } else {
-            $this->catatKeuangan($operasional);
+        if ($operasional->operasional === 'pemasukan' && $operasional->kategori?->nama === 'Bayar Hutang') {
+            if ($operasional->tipe_nama === 'penjual' && $operasional->penjual_id) {
+                Penjual::where('id', $operasional->penjual_id)
+                    ->increment('hutang', $operasional->nominal);
+            }
         }
     }
 
@@ -177,18 +189,69 @@ class OperasionalObserver
 
         $kategori = $operasional->kategori?->nama ?? 'Tanpa Kategori';
         $keterangan = $operasional->keterangan ? " - {$operasional->keterangan}" : '';
-        $fromDO = $operasional->is_from_transaksi ? ' (Via Transaksi DO)' : '';
 
-        return "Operasional #{$operasional->id} - {$kategori} - {$nama}{$keterangan}{$fromDO}";
+        return "({$kategori}) {$nama}{$keterangan}";
     }
 
-    private function updateHutang(Operasional $operasional, string $action): void
+    private function showTransactionNotification(Operasional $operasional, string $action): void
     {
-        // Kode updateHutang yang sudah ada tetap sama
+        $nominal = number_format($operasional->nominal, 0, ',', '.');
+
+        if (in_array($operasional->kategori?->nama, ['Pinjaman', 'Bayar Hutang'])) {
+            $title = match ($operasional->kategori?->nama) {
+                'Pinjaman' => 'Pinjaman Berhasil ' . ($action === 'deleted' ? 'Dihapus' : ($action === 'updated' ? 'Diupdate' : 'Dicatat')),
+                'Bayar Hutang' => 'Pembayaran Hutang Berhasil ' . ($action === 'deleted' ? 'Dihapus' : ($action === 'updated' ? 'Diupdate' : 'Dicatat')),
+                default => 'Transaksi Berhasil'
+            };
+
+            $body = match ($operasional->kategori?->nama) {
+                'Pinjaman' => "Pinjaman sebesar Rp {$nominal} telah " . ($action === 'deleted' ? 'dihapus' : ($action === 'updated' ? 'diupdate' : 'dicatat')),
+                'Bayar Hutang' => "Pembayaran hutang sebesar Rp {$nominal} telah " . ($action === 'deleted' ? 'dihapus' : ($action === 'updated' ? 'diupdate' : 'dicatat')),
+                default => "Transaksi sebesar Rp {$nominal} telah " . ($action === 'deleted' ? 'dihapus' : ($action === 'updated' ? 'diupdate' : 'dicatat'))
+            };
+
+            $message = match ($operasional->kategori?->nama) {
+                'Pinjaman' => "Hutang {$operasional->penjual->nama} bertambah",
+                'Bayar Hutang' => "Hutang {$operasional->penjual->nama} berkurang",
+                default => $operasional->keterangan
+            };
+        } else {
+            $title = 'Transaksi Operasional ' . ($action === 'deleted' ? 'Dihapus' : ($action === 'updated' ? 'Diupdate' : 'Berhasil'));
+            $body = ($operasional->operasional === 'pemasukan' ? "Pemasukan" : "Pengeluaran") .
+                " sebesar Rp {$nominal} telah " .
+                ($action === 'deleted' ? 'dihapus' : ($action === 'updated' ? 'diupdate' : 'dicatat'));
+            $message = $operasional->keterangan;
+        }
+
+        $this->showNotification($title, $body, $message);
     }
 
-    private function rollbackHutang(Operasional $operasional): void
+    private function logAndNotifyError(string $action, \Exception $e, Operasional $operasional): void
     {
-        // Kode rollbackHutang yang sudah ada tetap sama
+        \Log::error("Error {$action} Operasional:", [
+            'error' => $e->getMessage(),
+            'operasional' => $operasional->toArray()
+        ]);
+
+        $this->showNotification(
+            'Error!',
+            "Terjadi kesalahan saat {$action} transaksi",
+            $e->getMessage(),
+            'danger'
+        );
+    }
+
+    private function showNotification(string $title, string $body, string $message = '', string $type = 'success'): void
+    {
+        Notification::make()
+            ->title($title)
+            ->{$type}()
+            ->body($body)
+            ->when(
+                $message !== '',
+                fn($notification) => $notification->message($message)
+            )
+            ->persistent()
+            ->send();
     }
 }

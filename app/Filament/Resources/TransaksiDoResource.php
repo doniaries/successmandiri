@@ -26,6 +26,7 @@ class TransaksiDoResource extends Resource
     protected static ?string $pluralModelLabel = 'Transaksi DO';
     protected static ?int $navigationSort = 1;
 
+
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::count();
@@ -77,6 +78,7 @@ class TransaksiDoResource extends Resource
                                 ->schema([
                                     Forms\Components\Select::make('penjual_id')
                                         ->label('Penjual')
+                                        ->autofocus()
                                         ->relationship('penjual', 'nama')
                                         ->searchable()
                                         ->preload()

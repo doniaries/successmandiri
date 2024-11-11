@@ -17,8 +17,8 @@ class LaporanKeuangan extends Model
 
     protected $fillable = [
         'tanggal',
-        'jenis',
-        'tipe_transaksi',
+        'jenis', // masuk/keluar
+        'tipe_transaksi', // transaksi_do/operasional
         'kategori_do',
         'kategori_operasional_id',
         'keterangan',
@@ -37,23 +37,35 @@ class LaporanKeuangan extends Model
         'saldo_sesudah' => 'decimal:0',
     ];
 
+    // Relationships
     public function kategoriOperasional()
     {
-        return $this->belongsTo(KategoriOperasional::class);
+        return $this->belongsTo(KategoriOperasional::class, 'kategori_operasional_id');
     }
 
     public function transaksiDo()
     {
-        return $this->belongsTo(TransaksiDo::class);
+        return $this->belongsTo(TransaksiDo::class, 'transaksi_do_id');
     }
 
     public function operasional()
     {
-        return $this->belongsTo(Operasional::class);
+        return $this->belongsTo(Operasional::class, 'operasional_id');
     }
 
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Scopes
+    public function scopePemasukan($query)
+    {
+        return $query->where('jenis', 'masuk');
+    }
+
+    public function scopePengeluaran($query)
+    {
+        return $query->where('jenis', 'keluar');
     }
 }
