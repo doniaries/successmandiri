@@ -77,6 +77,7 @@ class TransaksiDoResource extends Resource
                                 ->schema([
                                     Forms\Components\Select::make('penjual_id')
                                         ->label('Penjual')
+                                        ->autofocus()
                                         ->relationship('penjual', 'nama')
                                         ->searchable()
                                         ->preload()
