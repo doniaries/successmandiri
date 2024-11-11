@@ -26,7 +26,7 @@ class OperasionalResource extends Resource
     protected static ?string $model = Operasional::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    protected static ?string $navigationLabel = 'Data Operasional';
+    protected static ?string $navigationLabel = 'Operasional';
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form

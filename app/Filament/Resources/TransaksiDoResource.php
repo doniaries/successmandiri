@@ -77,31 +77,27 @@ class TransaksiDoResource extends Resource
                                 ->schema([
                                     Forms\Components\Select::make('penjual_id')
                                         ->label('Penjual')
-                                        ->placeholder('Pilih Nama Penjual')
                                         ->relationship('penjual', 'nama')
                                         ->searchable()
                                         ->preload()
-                                        ->hint('Tambahkan Penjual Baru')
-                                        ->hintIcon('heroicon-m-arrow-down-circle')
-                                        ->hintColor('primary')
-                                        ->createOptionForm([
-                                            Forms\Components\TextInput::make('nama')
-                                                ->required()
-                                                ->label('Nama'),
-                                            Forms\Components\TextInput::make('alamat')
-                                                ->required()
-                                                ->label('Alamat'),
-                                            Forms\Components\TextInput::make('telepon')
-                                                ->required()
-                                                ->label('Telepon/HP'),
-                                        ])
-                                        ->live()
+                                        ->live() // Make field reactive
                                         ->afterStateUpdated(function ($state, Forms\Set $set) {
                                             if ($state) {
-                                                $hutang = Penjual::find($state)?->hutang ?? 0;
-                                                $set('hutang', $hutang);
+                                                // Get fresh hutang data
+                                                $penjual = Penjual::find($state);
+                                                if ($penjual) {
+                                                    $hutang = $penjual->hutang;
+                                                    $set('hutang', $hutang);
+                                                    $set('sisa_hutang', $hutang); // Set initial sisa hutang
+
+                                                    // Reset bayar hutang when penjual changes
+                                                    $set('bayar_hutang', 0);
+                                                }
                                             } else {
+                                                // Reset related fields
                                                 $set('hutang', 0);
+                                                $set('sisa_hutang', 0);
+                                                $set('bayar_hutang', 0);
                                             }
                                         })
                                         ->required(),
@@ -198,8 +194,9 @@ class TransaksiDoResource extends Resource
                                         ->options([
                                             'Lunas' => 'Lunas',
                                             'Belum Lunas' => 'Belum Lunas',
+
                                         ])
-                                        // ->default('Lunas')
+                                        ->default('Lunas')
                                         ->required(),
                                     Forms\Components\Select::make('cara_bayar')
                                         ->label('Cara Bayar')
@@ -258,6 +255,7 @@ class TransaksiDoResource extends Resource
 
         ]);
     }
+
 
     public static function table(Table $table): Table
     {
@@ -324,13 +322,9 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('IDR')
-                    ->color(Color::Amber)
-                    ->weight('bold')
-                    ->summarize([
-                        Tables\Columns\Summarizers\Sum::make()
-                            ->money('IDR')
-                    ])
-                    ->sortable(),
+                    ->state(function (TransaksiDo $record): int {
+                        return $record->tonase * $record->harga_satuan;
+                    }),
 
                 Tables\Columns\TextColumn::make('upah_bongkar')
                     ->label('Upah Bongkar')
@@ -365,18 +359,16 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('sisa_hutang')
                     ->label('Sisa Hutang')
                     ->money('IDR')
-                    ->sortable(),
+                    ->state(function (TransaksiDo $record): int {
+                        return max(0, $record->hutang - $record->bayar_hutang);
+                    }),
 
                 Tables\Columns\TextColumn::make('sisa_bayar')
                     ->label('Sisa Bayar')
                     ->money('IDR')
-                    ->color(Color::Emerald)
-                    ->weight('bold')
-                    ->summarize([
-                        Tables\Columns\Summarizers\Sum::make()
-                            ->money('IDR')
-                    ])
-                    ->sortable(),
+                    ->state(function (TransaksiDo $record): int {
+                        return max(0, $record->total - $record->upah_bongkar - $record->biaya_lain - $record->bayar_hutang);
+                    }),
 
                 Tables\Columns\TextColumn::make('status_bayar')
                     ->label('Status Bayar')
@@ -420,120 +412,7 @@ class TransaksiDoResource extends Resource
             ->emptyStateIcon('heroicon-o-banknotes');
     }
 
-
-
-    // Helper methods untuk kalkulasi
-    private static function hitungTotal($state, Forms\Get $get, Forms\Set $set): void
-    {
-        $tonase = self::formatCurrency($get('tonase'));
-        $hargaSatuan = self::formatCurrency($get('harga_satuan'));
-
-        if ($tonase && $hargaSatuan) {
-            $total = $tonase * $hargaSatuan;
-            $set('total', $total);
-
-            $upahBongkar = self::formatCurrency($get('upah_bongkar'));
-            $biayaLain = self::formatCurrency($get('biaya_lain'));
-            $bayarHutang = self::formatCurrency($get('bayar_hutang'));
-
-            $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
-            $set('sisa_bayar', max(0, $sisaBayar));
-        }
-    }
-
-    private static function formatCurrency($number): int
-    {
-        return (int)str_replace(['.', ','], ['', '.'], $number ?? 0);
-    }
-
-    private static function hitungSisaBayar($state, Forms\Get $get, Forms\Set $set): void
-    {
-        $total = (int)$get('total') ?? 0;
-        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
-        $biayaLain = (int)$get('biaya_lain') ?? 0;
-        $bayarHutang = (int)$get('bayar_hutang') ?? 0;
-
-        // Hitung sisa bayar dengan semua komponen
-        $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
-        $set('sisa_bayar', $sisaBayar);
-    }
-
-    private static function hitungPembayaranHutang($state, Forms\Get $get, Forms\Set $set): void
-    {
-        $hutang = (int)$get('hutang') ?? 0;
-        $bayarHutang = (int)$state ?? 0;
-
-        // Validasi pembayaran tidak melebihi hutang
-        if ($bayarHutang > $hutang) {
-            $set('bayar_hutang', $hutang);
-            $bayarHutang = $hutang;
-        }
-
-        // Hitung sisa hutang
-        $sisaHutang = $hutang - $bayarHutang;
-        $set('sisa_hutang', $sisaHutang);
-
-        // Hitung ulang sisa bayar dengan semua komponen
-        $total = (int)$get('total') ?? 0;
-        $upahBongkar = (int)$get('upah_bongkar') ?? 0;
-        $biayaLain = (int)$get('biaya_lain') ?? 0;
-
-        $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
-        $set('sisa_bayar', $sisaBayar);
-    }
-
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-
-        // Set default values untuk mencegah NULL
-        $defaults = [
-            'upah_bongkar' => 0,
-            'biaya_lain' => 0,
-            'bayar_hutang' => 0,
-            'hutang' => 0,
-            'total' => 0,
-        ];
-
-        $data = array_merge($defaults, $data);
-
-
-        // Hitung sisa hutang
-        $hutang = (int)str_replace(['.', ','], ['', '.'], $data['hutang'] ?? 0);
-        $bayarHutang = (int)str_replace(['.', ','], ['', '.'], $data['bayar_hutang'] ?? 0);
-        $data['sisa_hutang'] = $hutang - $bayarHutang;
-
-        // Format angka lainnya
-        $numericFields = [
-            'tonase',
-            'harga_satuan',
-            'total',
-            'upah_bongkar',
-            'biaya_lain',
-            'sisa_hutang',
-            'hutang',
-            'bayar_hutang',
-            'sisa_bayar'
-        ];
-
-        foreach ($numericFields as $field) {
-            if (isset($data[$field])) {
-                $data[$field] = (int)str_replace(['.', ','], ['', '.'], $data[$field]);
-            }
-        }
-        // Hitung total
-        if (isset($data['tonase']) && isset($data['harga_satuan'])) {
-            $data['total'] = $data['tonase'] * $data['harga_satuan'];
-        }
-
-        // Hitung sisa hutang
-        $data['sisa_hutang'] = $data['hutang'] - $data['bayar_hutang'];
-
-        // Hitung sisa bayar dengan semua komponen
-        $data['sisa_bayar'] = $data['total'] - $data['upah_bongkar'] - $data['biaya_lain'] - $data['bayar_hutang'];
-
-        return $data;
-    }
-
+    //---------------------------------//
     public static function getPages(): array
     {
         return [
@@ -554,5 +433,127 @@ class TransaksiDoResource extends Resource
     public static function getNavigationBadgeColor(): ?string
     {
         return 'primary';
+    }
+
+    // Helper methods untuk kalkulasi
+    private static function formatCurrency($number): int
+    {
+        if (empty($number)) return 0;
+        // Handle string format currency
+        if (is_string($number)) {
+            return (int) str_replace(['.', ','], ['', '.'], $number);
+        }
+        return (int) $number;
+    }
+
+
+    //-----------------------------//
+    // Helper methods untuk kalkulasi
+    private static function hitungTotal($state, Forms\Get $get, Forms\Set $set): void
+    {
+        // Format values
+        $tonase = self::formatCurrency($get('tonase'));
+        $hargaSatuan = self::formatCurrency($get('harga_satuan'));
+
+        if ($tonase && $hargaSatuan) {
+            // Calculate total
+            $total = $tonase * $hargaSatuan;
+            $set('total', $total);
+
+            // Recalculate sisa bayar
+            $upahBongkar = self::formatCurrency($get('upah_bongkar'));
+            $biayaLain = self::formatCurrency($get('biaya_lain'));
+            $bayarHutang = self::formatCurrency($get('bayar_hutang'));
+
+            // Total - (Upah Bongkar + Biaya Lain + Bayar Hutang)
+            $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
+            $set('sisa_bayar', max(0, $sisaBayar));
+        }
+    }
+
+
+
+    // ---------------------//
+
+    // Perbaikan logika bayar hutang
+    private static function hitungPembayaranHutang($state, Forms\Get $get, Forms\Set $set): void
+    {
+        // Format values
+        $hutang = self::formatCurrency($get('hutang'));
+        $bayarHutang = self::formatCurrency($state);
+
+        // Validate bayar hutang
+        if ($bayarHutang > $hutang) {
+            $bayarHutang = $hutang;
+            $set('bayar_hutang', $hutang);
+            Notification::make()
+                ->warning()
+                ->title('Pembayaran disesuaikan')
+                ->body("Pembayaran hutang disesuaikan dengan total hutang: Rp " . number_format($hutang))
+                ->send();
+        }
+
+        // Update sisa hutang
+        $sisaHutang = $hutang - $bayarHutang;
+        $set('sisa_hutang', max(0, $sisaHutang));
+
+        // Recalculate sisa bayar
+        $total = self::formatCurrency($get('total'));
+        $upahBongkar = self::formatCurrency($get('upah_bongkar'));
+        $biayaLain = self::formatCurrency($get('biaya_lain'));
+
+        // Sisa Bayar = Total - (Upah Bongkar + Biaya Lain + Bayar Hutang)
+        $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
+        $set('sisa_bayar', max(0, $sisaBayar));
+    }
+
+
+    private static function hitungSisaBayar($state, Forms\Get $get, Forms\Set $set): void
+    {
+        // Format values
+        $total = self::formatCurrency($get('total'));
+        $upahBongkar = self::formatCurrency($get('upah_bongkar'));
+        $biayaLain = self::formatCurrency($get('biaya_lain'));
+        $bayarHutang = self::formatCurrency($get('bayar_hutang'));
+
+        // Sisa Bayar = Total - (Upah Bongkar + Biaya Lain + Bayar Hutang)
+        $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
+        $set('sisa_bayar', max(0, $sisaBayar));
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        // Format all numeric fields
+        $numericFields = [
+            'tonase',
+            'harga_satuan',
+            'upah_bongkar',
+            'biaya_lain',
+            'bayar_hutang'
+        ];
+
+        foreach ($numericFields as $field) {
+            $data[$field] = self::formatCurrency($data[$field] ?? 0);
+        }
+
+        // Get fresh hutang from penjual
+        if (!empty($data['penjual_id'])) {
+            $penjual = Penjual::find($data['penjual_id']);
+            if ($penjual) {
+                $data['hutang'] = $penjual->hutang;
+
+                // Revalidate bayar_hutang
+                if ($data['bayar_hutang'] > $data['hutang']) {
+                    $data['bayar_hutang'] = $data['hutang'];
+                }
+            }
+        }
+
+        // Calculate all derived values
+        $data['total'] = $data['tonase'] * $data['harga_satuan'];
+        $data['sisa_hutang'] = max(0, $data['hutang'] - $data['bayar_hutang']);
+        $data['sisa_bayar'] = max(0, $data['total'] - $data['upah_bongkar'] - $data['biaya_lain'] - $data['bayar_hutang']);
+
+        return $data;
     }
 }

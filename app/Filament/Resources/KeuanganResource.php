@@ -24,6 +24,7 @@ class KeuanganResource extends Resource
     protected static ?string $model = Keuangan::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
+    protected static ?string $navigationLabel = 'Data Keuangan';
     protected static ?int $navigationSort = 2;
 
     public static function getWidgets(): array
@@ -32,8 +33,6 @@ class KeuanganResource extends Resource
             Widgets\KeuanganStatsWidget::class,
         ];
     }
-
-
 
     public static function form(Form $form): Form
     {
@@ -87,7 +86,7 @@ class KeuanganResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
+                // Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -95,8 +94,8 @@ class KeuanganResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
+                    // Tables\Actions\ForceDeleteBulkAction::make(),
+                    // Tables\Actions\RestoreBulkAction::make(),
                 ]),
             ]);
     }

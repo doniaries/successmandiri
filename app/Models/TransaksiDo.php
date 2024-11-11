@@ -5,9 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Hugomyb\FilamentMediaAction\Models\Media;
 use App\Traits\GenerateMonthlyNumber;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\{HasMany, BelongsTo};
+use Illuminate\Support\Facades\{DB, Log};
+use Filament\Notifications\Notification;
 
 class TransaksiDo extends Model
 {
@@ -55,7 +56,6 @@ class TransaksiDo extends Model
         'sisa_hutang' => 'integer',
         'sisa_bayar' => 'integer',
         'status_bayar' => 'string',
-
     ];
 
     protected $attributes = [
@@ -69,124 +69,128 @@ class TransaksiDo extends Model
         'status_bayar' => 'Belum Lunas',
     ];
 
-
-    public function penjual()
+    // Relations
+    public function penjual(): BelongsTo
     {
         return $this->belongsTo(Penjual::class);
-    }
-
-
-
-    // public function pekerjas()
-    // {
-    //     return $this->belongsToMany(Pekerja::class, 'pekerja_transaksi_do')
-    //         ->withPivot('pendapatan_pekerja')
-    //         ->withTimestamps();
-    // }
-
-    // public function getTotalPekerjaAttribute()
-    // {
-    //     return $this->pekerjas()
-    //         ->whereNull('pekerjas.deleted_at')
-    //         ->count();
-    // }
-
-    // public function updatePendapatanPekerja()
-    // {
-    //     $jumlahPekerja = $this->pekerjas()->count();
-
-    //     if ($jumlahPekerja > 0) {
-    //         $pendapatanPerPekerja = $this->upah_bongkar / $jumlahPekerja;
-
-    //         foreach ($this->pekerjas as $pekerja) {
-    //             // Reset pendapatan lama jika ada
-    //             $pendapatanLama = $pekerja->pivot->pendapatan_pekerja ?? 0;
-    //             $pekerja->decrement('pendapatan', $pendapatanLama);
-
-    //             // Update pendapatan baru
-    //             $this->pekerjas()->updateExistingPivot($pekerja->id, [
-    //                 'pendapatan_pekerja' => $pendapatanPerPekerja
-    //             ]);
-    //             $pekerja->increment('pendapatan', $pendapatanPerPekerja);
-    //         }
-    //     }
-    // }
-
-
-    protected static function boot()
-    {
-        parent::boot();
-
-
-        //     // Saat transaksi dibuat
-        //     static::created(function ($transaksiDo) {
-        //         $jumlahPekerja = count($transaksiDo->pekerjas);
-        //         if ($jumlahPekerja > 0) {
-        //             $pendapatanPerPekerja = $transaksiDo->upah_bongkar / $jumlahPekerja;
-
-        //             foreach ($transaksiDo->pekerjas as $pekerja) {
-        //                 // Update pivot table
-        //                 $transaksiDo->pekerjas()->updateExistingPivot($pekerja->id, [
-        //                     'pendapatan_pekerja' => $pendapatanPerPekerja
-        //                 ]);
-
-        //                 // Update kolom pendapatan di tabel pekerja
-        //                 $totalPendapatan = $pekerja->transaksiDos()
-        //                     ->whereNull('deleted_at')
-        //                     ->sum('pekerja_transaksi_do.pendapatan_pekerja');
-
-        //                 $pekerja->update(['pendapatan' => $totalPendapatan]);
-        //             }
-        //         }
-        //     });
-
-
-        //     // Saat transaksi diupdate
-        //     static::updated(function ($transaksiDo) {
-        //         if ($transaksiDo->isDirty('upah_bongkar') || $transaksiDo->isDirty('pekerjas')) {
-        //             $transaksiDo->updatePendapatanPekerja();
-        //         }
-        //     });
-
-        //     // Saat transaksi diupdate
-        //     static::updated(function ($transaksiDo) {
-        //         if ($transaksiDo->isDirty('upah_bongkar')) {
-        //             $jumlahPekerja = count($transaksiDo->pekerjas);
-        //             if ($jumlahPekerja > 0) {
-        //                 $pendapatanPerPekerja = $transaksiDo->upah_bongkar / $jumlahPekerja;
-
-        //                 foreach ($transaksiDo->pekerjas as $pekerja) {
-        //                     // Update pivot table
-        //                     $transaksiDo->pekerjas()->updateExistingPivot($pekerja->id, [
-        //                         'pendapatan_pekerja' => $pendapatanPerPekerja
-        //                     ]);
-
-        //                     // Hitung ulang total pendapatan
-        //                     $totalPendapatan = $pekerja->transaksiDos()
-        //                         ->whereNull('deleted_at')
-        //                         ->sum('pekerja_transaksi_do.pendapatan_pekerja');
-
-        //                     $pekerja->update(['pendapatan' => $totalPendapatan]);
-        //                 }
-        //             }
-        //         }
-        //     });
-
-        //     // Saat transaksi dihapus
-        //     static::deleting(function ($transaksiDo) {
-        //         foreach ($transaksiDo->pekerjas as $pekerja) {
-        //             // Update kolom pendapatan di tabel pekerja (kurangi pendapatan dari transaksi ini)
-        //             $pendapatanDariTransaksiIni = $pekerja->pivot->pendapatan_pekerja;
-        //             $totalPendapatan = $pekerja->pendapatan - $pendapatanDariTransaksiIni;
-        //             $pekerja->update(['pendapatan' => max(0, $totalPendapatan)]);
-        //         }
-        //         // Hapus relasi di pivot table
-        //         $transaksiDo->pekerjas()->detach();
-        //     });
     }
 
     public function operasional(): HasMany
     {
         return $this->hasMany(Operasional::class, 'penjual_id', 'penjual_id');
+    }
+
+    // Accessor untuk hutang penjual
+    public function getHutangPenjualAttribute(): int
+    {
+        return $this->penjual ? $this->penjual->hutang : 0;
+    }
+
+    // Methods untuk perhitungan
+    private function hitungTotal(): int
+    {
+        return $this->tonase * $this->harga_satuan;
+    }
+
+    private function hitungSisaBayar(): int
+    {
+        return max(0, $this->total - $this->upah_bongkar - $this->biaya_lain - $this->bayar_hutang);
+    }
+
+    private function hitungSisaHutang(): int
+    {
+        return max(0, $this->hutang - $this->bayar_hutang);
+    }
+
+    // Method untuk proses transaksi keuangan
+    private function prosesTransaksiKeuangan(): void
+    {
+        try {
+            DB::beginTransaction();
+
+            $perusahaan = Perusahaan::firstOrFail();
+
+            // 1. Proses pembayaran hutang
+            if ($this->bayar_hutang > 0) {
+                if (!$this->penjual) {
+                    throw new \Exception('Data penjual tidak ditemukan');
+                }
+
+                $this->penjual->decrement('hutang', $this->bayar_hutang);
+
+                Keuangan::create([
+                    'tanggal' => $this->tanggal,
+                    'jenis_transaksi' => 'Masuk',
+                    'kategori' => 'Bayar Hutang',
+                    'sumber' => 'Transaksi DO',
+                    'jumlah' => $this->bayar_hutang,
+                    'keterangan' => "Pembayaran hutang penjual {$this->penjual->nama} via DO #{$this->nomor}"
+                ]);
+            }
+
+            // 2. Proses pemasukan biaya
+            $totalBiaya = $this->upah_bongkar + $this->biaya_lain;
+            if ($totalBiaya > 0) {
+                $perusahaan->increment('saldo', $totalBiaya);
+
+                Keuangan::create([
+                    'tanggal' => $this->tanggal,
+                    'jenis_transaksi' => 'Masuk',
+                    'kategori' => 'Biaya DO',
+                    'sumber' => 'Transaksi DO',
+                    'jumlah' => $totalBiaya,
+                    'keterangan' => "Pemasukan biaya DO #{$this->nomor}"
+                ]);
+            }
+
+            // 3. Proses pembayaran DO
+            if ($this->sisa_bayar > 0) {
+                if ($perusahaan->saldo < $this->sisa_bayar) {
+                    throw new \Exception('Saldo perusahaan tidak mencukupi');
+                }
+
+                $perusahaan->decrement('saldo', $this->sisa_bayar);
+
+                Keuangan::create([
+                    'tanggal' => $this->tanggal,
+                    'jenis_transaksi' => 'Keluar',
+                    'kategori' => 'Pembayaran DO',
+                    'sumber' => 'Transaksi DO',
+                    'jumlah' => $this->sisa_bayar,
+                    'keterangan' => "Pembayaran DO #{$this->nomor} ke {$this->penjual->nama}"
+                ]);
+            }
+
+            DB::commit();
+
+            Log::info('Transaksi DO Berhasil:', [
+                'nomor' => $this->nomor,
+                'total' => $this->total,
+                'bayar_hutang' => $this->bayar_hutang,
+                'sisa_bayar' => $this->sisa_bayar
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Error Transaksi DO:', [
+                'nomor' => $this->nomor,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            // Set nilai awal dari penjual
+            $model->hutang = $model->hutang_penjual;
+
+            // Hitung nilai turunan
+            $model->total = $model->hitungTotal();
+            $model->sisa_hutang = $model->hitungSisaHutang();
+            $model->sisa_bayar = $model->hitungSisaBayar();
+        });
     }
 }

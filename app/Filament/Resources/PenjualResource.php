@@ -47,7 +47,7 @@ class PenjualResource extends Resource
 
                         Forms\Components\TextInput::make('hutang')
                             ->label('Hutang')
-                            ->disabled()
+                            // ->disabled()
                             ->dehydrated()
                             ->prefix('Rp.')
                             ->numeric()
