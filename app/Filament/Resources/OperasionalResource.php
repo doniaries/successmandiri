@@ -27,7 +27,14 @@ class OperasionalResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
     protected static ?string $navigationLabel = 'Operasional';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 5;
+
+    //count
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
+    }
+
 
     public static function form(Form $form): Form
     {
@@ -483,10 +490,5 @@ class OperasionalResource extends Resource
             'create' => Pages\CreateOperasional::route('/create'),
             'edit' => Pages\EditOperasional::route('/{record}/edit'),
         ];
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
     }
 }
