@@ -77,7 +77,6 @@ class TransaksiDoResource extends Resource
                                 ->schema([
                                     Forms\Components\Select::make('penjual_id')
                                         ->label('Penjual')
-                                        ->autofocus()
                                         ->relationship('penjual', 'nama')
                                         ->searchable()
                                         ->preload()
@@ -323,9 +322,13 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total')
                     ->money('IDR')
-                    ->state(function (TransaksiDo $record): int {
-                        return $record->tonase * $record->harga_satuan;
-                    }),
+                    ->color(Color::Amber)
+                    ->weight('bold')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('upah_bongkar')
                     ->label('Upah Bongkar')
@@ -367,9 +370,13 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('sisa_bayar')
                     ->label('Sisa Bayar')
                     ->money('IDR')
-                    ->state(function (TransaksiDo $record): int {
-                        return max(0, $record->total - $record->upah_bongkar - $record->biaya_lain - $record->bayar_hutang);
-                    }),
+                    ->color(Color::Emerald)
+                    ->weight('bold')
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('status_bayar')
                     ->label('Status Bayar')
@@ -522,9 +529,9 @@ class TransaksiDoResource extends Resource
         $set('sisa_bayar', max(0, $sisaBayar));
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
+    protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Format all numeric fields
+        // Format numeric fields
         $numericFields = [
             'tonase',
             'harga_satuan',
@@ -550,7 +557,7 @@ class TransaksiDoResource extends Resource
             }
         }
 
-        // Calculate all derived values
+        // Calculate derived values
         $data['total'] = $data['tonase'] * $data['harga_satuan'];
         $data['sisa_hutang'] = max(0, $data['hutang'] - $data['bayar_hutang']);
         $data['sisa_bayar'] = max(0, $data['total'] - $data['upah_bongkar'] - $data['biaya_lain'] - $data['bayar_hutang']);
