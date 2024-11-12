@@ -64,7 +64,7 @@ class PekerjaResource extends Resource
                 Tables\Columns\TextColumn::make('pendapatan')
                     ->money('IDR')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('total_hutang')
+                Tables\Columns\TextColumn::make('hutang')
                     ->money('IDR')
                     ->sortable(),
 

@@ -48,7 +48,7 @@ class PenjualResource extends Resource
                             ->tel()
                             ->maxLength(255),
 
-                        Forms\Components\TextInput::make('hutang')
+                        Forms\Components\TextInput::make('total_hutang')
                             ->label('total_hutang')
                             // ->disabled()
                             ->dehydrated()
@@ -76,7 +76,7 @@ class PenjualResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('telepon')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('total_hutang')
+                Tables\Columns\TextColumn::make('hutang')
                     ->label('Hutang')
                     ->alignCenter()
                     ->badge()

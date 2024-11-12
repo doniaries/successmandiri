@@ -11,19 +11,19 @@ class PenjualSeeder extends Seeder
     {
         $penjuals = [
             [
-                'nama' => 'Budi Satriadi',
-                'alamat' => 'Timpeh 7 ',
+                'nama' => 'Budi',
+                'alamat' => 'Jl. Supplier No. 1',
                 'telepon' => '081345678901',
                 'hutang' => 500000
             ],
             [
-                'nama' => 'Dudung Gunawan',
+                'nama' => 'Dudung',
                 'alamat' => 'Jl. Distributor No. 2',
                 'telepon' => '081345678902',
                 'hutang' => 2000000
             ],
             [
-                'nama' => 'Wahyudi Putra',
+                'nama' => 'Wahyudi',
                 'alamat' => 'Jl. Mitra No. 3',
                 'telepon' => '081345678903',
                 'hutang' => 0

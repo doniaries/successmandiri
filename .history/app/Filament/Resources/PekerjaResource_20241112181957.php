@@ -39,7 +39,7 @@ class PekerjaResource extends Resource
                     ->prefix('Rp. ')
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
                     ->default(0),
-                Forms\Components\TextInput::make('total_hutang')
+                Forms\Components\TextInput::make('hutang')
                     ->disabled()
                     ->prefix('Rp. ')
                     ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 2)
@@ -64,7 +64,7 @@ class PekerjaResource extends Resource
                 Tables\Columns\TextColumn::make('pendapatan')
                     ->money('IDR')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('total_hutang')
+                Tables\Columns\TextColumn::make('hutang')
                     ->money('IDR')
                     ->sortable(),
 

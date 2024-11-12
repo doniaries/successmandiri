@@ -48,7 +48,7 @@ class PenjualResource extends Resource
                             ->tel()
                             ->maxLength(255),
 
-                        Forms\Components\TextInput::make('hutang')
+                        Forms\Components\TextInput::make('total_hutang')
                             ->label('total_hutang')
                             // ->disabled()
                             ->dehydrated()
