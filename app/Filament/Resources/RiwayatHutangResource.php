@@ -17,7 +17,7 @@ class RiwayatHutangResource extends Resource
     protected static ?string $model = RiwayatHutang::class;
     protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $navigationLabel = 'Riwayat Hutang';
-    protected static ?string $navigationGroup = 'Transaksi';
+    // protected static ?string $navigationGroup = 'Transaksi';
     protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
@@ -181,15 +181,10 @@ class RiwayatHutangResource extends Resource
             ->poll('30s');
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListRiwayatHutang::route('/'),
+            'index' => Pages\ListRiwayatHutangs::route('/'),
             'view' => Pages\ViewRiwayatHutang::route('/{record}'),
         ];
     }

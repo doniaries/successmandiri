@@ -82,6 +82,7 @@ class TransaksiDo extends Model
     }
 
 
+
     // Accessor untuk hutang penjual
     public function getHutangPenjualAttribute(): int
     {
@@ -89,7 +90,7 @@ class TransaksiDo extends Model
     }
 
     // Methods untuk perhitungan
-    private function hitungTotal(): int
+    public function hitungTotal(): int  // Dari private menjadi public
     {
         return $this->tonase * $this->harga_satuan;
     }
@@ -99,12 +100,12 @@ class TransaksiDo extends Model
         return $this->hasMany(RiwayatHutang::class);
     }
 
-    private function hitungSisaBayar(): int
+    public function hitungSisaBayar(): int  // Dari private menjadi public
     {
         return max(0, $this->total - $this->upah_bongkar - $this->biaya_lain - $this->pembayaran_hutang);
     }
 
-    private function hitungSisaHutang(): int
+    public function hitungSisaHutang(): int  // Dari private menjadi public
     {
         return max(0, $this->hutang_awal - $this->pembayaran_hutang);
     }

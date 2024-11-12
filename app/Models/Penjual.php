@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Penjual extends Model
 {
@@ -24,6 +25,21 @@ class Penjual extends Model
     {
         return $this->hasMany(RiwayatHutang::class, 'entitas_id')
             ->where('tipe_entitas', 'penjual');
+    }
+
+
+    public function transaksiDo(): HasMany
+    {
+        return $this->hasMany(TransaksiDo::class);
+    }
+
+    public function updateHutang(float $amount, string $type = 'add'): void
+    {
+        if ($type === 'add') {
+            $this->increment('hutang', $amount);
+        } else {
+            $this->decrement('hutang', $amount);
+        }
     }
 
     protected static function boot()

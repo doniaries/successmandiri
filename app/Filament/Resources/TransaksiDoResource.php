@@ -75,16 +75,15 @@ class TransaksiDoResource extends Resource
                                 ->searchable()
                                 ->preload()
                                 ->live()
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                ->afterStateUpdated(function ($state, Forms\Set $set, ?Model $record) { // Tambah $record parameter
                                     if ($state) {
                                         $penjual = Penjual::find($state);
                                         if ($penjual) {
-                                            // Hanya set hutang_awal saat create form
-                                            if (!$this->record) {
+                                            // Check record melalui parameter, bukan $this
+                                            if (!$record) {
                                                 $set('hutang_awal', $penjual->hutang);
                                                 $set('sisa_hutang_penjual', $penjual->hutang);
                                             }
-                                            // Tampilkan info hutang terkini
                                             $set('info_hutang_terkini', $penjual->hutang);
                                         }
                                     } else {
@@ -94,7 +93,6 @@ class TransaksiDoResource extends Resource
                                     }
                                 })
                                 ->required(),
-
                             Forms\Components\TextInput::make('nomor_polisi')
                                 ->placeholder('BA 1234 K')
                                 ->label('Nomor Polisi'),

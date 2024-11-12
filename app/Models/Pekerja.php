@@ -22,6 +22,7 @@ class Pekerja extends Model
         'hutang' => 'decimal:0',
     ];
 
+
     public function operasional()
     {
         return $this->hasMany(Operasional::class);
