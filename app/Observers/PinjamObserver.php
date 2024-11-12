@@ -13,7 +13,7 @@ class PinjamObserver
         Keuangan::create([
             'tanggal' => $pinjam->tanggal_pinjaman,
             'jenis' => 'pengeluaran',
-            'kategori' => 'bayar_hutang',
+            'kategori' => '',
             'referensi_id' => $pinjam->id,
             'nominal' => $pinjam->nominal,
             'keterangan' => "Pinjaman {$pinjam->kategori_peminjam} - {$pinjam->nama_peminjam}",
@@ -25,7 +25,7 @@ class PinjamObserver
     {
         // Hapus record keuangan terkait
         Keuangan::where('referensi_id', $pinjam->id)
-            ->where('kategori', 'bayar_hutang')
+            ->where('kategori', '')
             ->delete();
     }
 }

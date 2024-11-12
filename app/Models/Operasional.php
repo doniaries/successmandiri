@@ -48,7 +48,7 @@ class Operasional extends Model
     ];
 
     const KATEGORI_OPERASIONAL = [
-        'bayar_hutang' => 'Bayar Hutang',
+        '' => 'Bayar Hutang',
         'uang_jalan' => 'Uang Jalan',
         'gaji' => 'Gaji',
         'bahan_bakar' => 'Bahan Bakar',

@@ -9,7 +9,7 @@ class LaporanKeuangan extends Model
     protected $table = 'laporan_keuangan';
 
     const KATEGORI_DO = [
-        'bayar_hutang' => 'Bayar Hutang',
+        '' => 'Bayar Hutang',
         'biaya_lain' => 'Biaya Lain',
         'upah_bongkar' => 'Upah Bongkar',
         'pembayaran_do' => 'Pembayaran DO',
