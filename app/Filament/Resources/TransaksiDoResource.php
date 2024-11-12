@@ -355,9 +355,9 @@ class TransaksiDoResource extends Resource
                 Tables\Columns\TextColumn::make('sisa_hutang_penjual')
                     ->label('Sisa Hutang')
                     ->money('IDR')
-                    ->state(function (TransaksiDo $record): int {
-                        return max(0, $record->hutang - $record->pembayaran_hutang);
-                    }),
+                    ->color('danger')
+                    ->alignment('right')
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('sisa_bayar')
                     ->label('Sisa Bayar')
