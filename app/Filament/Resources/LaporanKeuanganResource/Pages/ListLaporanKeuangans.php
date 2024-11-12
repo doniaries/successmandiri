@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\LaporanKeuanganResource\Pages;
 
 use App\Filament\Resources\LaporanKeuanganResource;
-use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganStatsWidget;
+use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganDoStatsWidget;
 use Filament\Resources\Pages\ListRecords;
 
 class ListLaporanKeuangans extends ListRecords
@@ -13,7 +13,7 @@ class ListLaporanKeuangans extends ListRecords
     protected function getHeaderWidgets(): array
     {
         return [
-            LaporanKeuanganStatsWidget::class,
+            LaporanKeuanganDoStatsWidget::class,
         ];
     }
 

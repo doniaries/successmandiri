@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LaporanKeuanganResource\Pages;
-use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganStatsWidget;
+use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganDoStatsWidget;
 use App\Models\LaporanKeuangan;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -31,7 +31,7 @@ class LaporanKeuanganResource extends Resource
     public static function getWidgets(): array
     {
         return [
-            LaporanKeuanganStatsWidget::class,
+            LaporanKeuanganDoStatsWidget::class,
         ];
     }
 

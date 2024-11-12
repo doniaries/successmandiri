@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 class RiwayatHutangResource extends Resource
 {
     protected static ?string $model = RiwayatHutang::class;
-    protected static ?string $navigationIcon = 'heroicon-o-clock-rewind';
+    protected static ?string $navigationIcon = 'heroicon-o-clock';
     protected static ?string $navigationLabel = 'Riwayat Hutang';
     protected static ?string $navigationGroup = 'Transaksi';
     protected static ?int $navigationSort = 3;

@@ -4,7 +4,6 @@ namespace App\Filament\Resources\RiwayatHutangResource\Pages;
 
 use App\Filament\Resources\RiwayatHutangResource;
 use Filament\Resources\Pages\ListRecords;
-use Filament\Actions;
 
 class ListRiwayatHutang extends ListRecords
 {
@@ -17,8 +16,6 @@ class ListRiwayatHutang extends ListRecords
 
     protected function getHeaderWidgets(): array
     {
-        return [
-            RiwayatHutangStats::class,
-        ];
+        return [];
     }
 }

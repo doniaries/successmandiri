@@ -4,22 +4,16 @@ namespace App\Filament\Resources\PenjualResource\Pages;
 
 use App\Filament\Resources\PenjualResource;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\ViewRecord;
 
-class EditPenjual extends EditRecord
+class ViewPenjual extends ViewRecord
 {
     protected static string $resource = PenjualResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ViewAction::make(),
-            Actions\DeleteAction::make(),
+            Actions\EditAction::make(),
         ];
-    }
-
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
     }
 }

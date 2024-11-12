@@ -13,7 +13,22 @@ class ViewRiwayatHutang extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make(),
+            Actions\ViewAction::make(),
         ];
+    }
+
+    public function hasCombinedRelationManagerTabsWithContent(): bool
+    {
+        return true;
+    }
+
+    protected function getFooterWidgets(): array
+    {
+        return [];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [];
     }
 }
