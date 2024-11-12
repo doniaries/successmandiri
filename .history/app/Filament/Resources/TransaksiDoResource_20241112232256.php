@@ -338,13 +338,13 @@ class TransaksiDoResource extends Resource
                     ->money('IDR'),
 
 
-                Tables\Columns\TextColumn::make('hutang_awal')
+                Tables\Columns\TextColumn::make('hutang')
                     ->label('Hutang')
                     ->money('IDR')
                     ->color(Color::Red)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('pembayaran_hutang')
+                Tables\Columns\TextColumn::make('bayar_hutang')
                     ->label('Bayar Hutang')
                     ->money('IDR')
                     ->summarize([
@@ -354,11 +354,11 @@ class TransaksiDoResource extends Resource
                     ->color(Color::Orange)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('sisa_hutang_penjual')
+                Tables\Columns\TextColumn::make('sisa_hutang')
                     ->label('Sisa Hutang')
                     ->money('IDR')
                     ->state(function (TransaksiDo $record): int {
-                        return max(0, $record->hutang - $record->pembayaran_hutang);
+                        return max(0, $record->hutang - $record->bayar_hutang);
                     }),
 
                 Tables\Columns\TextColumn::make('sisa_bayar')
@@ -414,18 +414,6 @@ class TransaksiDoResource extends Resource
             ->emptyStateIcon('heroicon-o-banknotes');
     }
 
-    // Helper method untuk update sisa bayar
-    private static function updateSisaBayar(Forms\Get $get, Forms\Set $set): void
-    {
-        $total = $get('total') ?? 0;
-        $upahBongkar = $get('upah_bongkar') ?? 0;
-        $biayaLain = $get('biaya_lain') ?? 0;
-        $pembayaranHutang = $get('pembayaran_hutang') ?? 0;
-
-        $sisaBayar = $total - $upahBongkar - $biayaLain - $pembayaranHutang;
-        $set('sisa_bayar', max(0, $sisaBayar));
-    }
-
     //---------------------------------//
     public static function getPages(): array
     {
@@ -477,7 +465,7 @@ class TransaksiDoResource extends Resource
             // Recalculate sisa bayar
             $upahBongkar = self::formatCurrency($get('upah_bongkar'));
             $biayaLain = self::formatCurrency($get('biaya_lain'));
-            $bayarHutang = self::formatCurrency($get('pembayaran_hutang'));
+            $bayarHutang = self::formatCurrency($get('bayar_hutang'));
 
             // Total - (Upah Bongkar + Biaya Lain + Bayar Hutang)
             $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
@@ -499,7 +487,7 @@ class TransaksiDoResource extends Resource
         // Validate bayar hutang
         if ($bayarHutang > $hutang) {
             $bayarHutang = $hutang;
-            $set('pembayaran_hutang', $hutang);
+            $set('bayar_hutang', $hutang);
             Notification::make()
                 ->warning()
                 ->title('Pembayaran disesuaikan')
@@ -528,7 +516,7 @@ class TransaksiDoResource extends Resource
         $total = self::formatCurrency($get('total'));
         $upahBongkar = self::formatCurrency($get('upah_bongkar'));
         $biayaLain = self::formatCurrency($get('biaya_lain'));
-        $bayarHutang = self::formatCurrency($get('pembayaran_hutang'));
+        $bayarHutang = self::formatCurrency($get('bayar_hutang'));
 
         // Sisa Bayar = Total - (Upah Bongkar + Biaya Lain + Bayar Hutang)
         $sisaBayar = $total - $upahBongkar - $biayaLain - $bayarHutang;
@@ -543,7 +531,7 @@ class TransaksiDoResource extends Resource
             'harga_satuan',
             'upah_bongkar',
             'biaya_lain',
-            'pembayaran_hutang'
+            'bayar_hutang'
         ];
 
         foreach ($numericFields as $field) {
@@ -556,17 +544,17 @@ class TransaksiDoResource extends Resource
             if ($penjual) {
                 $data['hutang'] = $penjual->hutang;
 
-                // Revalidate pembayaran_hutang
-                if ($data['pembayaran_hutang'] > $data['hutang']) {
-                    $data['pembayaran_hutang'] = $data['hutang'];
+                // Revalidate bayar_hutang
+                if ($data['bayar_hutang'] > $data['hutang']) {
+                    $data['bayar_hutang'] = $data['hutang'];
                 }
             }
         }
 
         // Calculate derived values
         $data['total'] = $data['tonase'] * $data['harga_satuan'];
-        $data['sisa_hutang'] = max(0, $data['hutang'] - $data['pembayaran_hutang']);
-        $data['sisa_bayar'] = max(0, $data['total'] - $data['upah_bongkar'] - $data['biaya_lain'] - $data['pembayaran_hutang']);
+        $data['sisa_hutang'] = max(0, $data['hutang'] - $data['bayar_hutang']);
+        $data['sisa_bayar'] = max(0, $data['total'] - $data['upah_bongkar'] - $data['biaya_lain'] - $data['bayar_hutang']);
 
         return $data;
     }

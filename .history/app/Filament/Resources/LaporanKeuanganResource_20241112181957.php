@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LaporanKeuanganResource\Pages;
-use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganStatsWidget;
+use App\Filament\Resources\LaporankeuanganStatWidget\Widgets\LaporankeuanganStatWidget;
 use App\Models\LaporanKeuangan;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -28,10 +28,10 @@ class LaporanKeuanganResource extends Resource
     protected static bool $shouldRegisterNavigation = true; // Tambahkan ini
 
 
-    public static function getWidgets(): array
+    public static function getWidgets(): array //daftarkan widget di sini
     {
         return [
-            LaporanKeuanganStatsWidget::class,
+            LaporankeuanganStatWidget::class
         ];
     }
 

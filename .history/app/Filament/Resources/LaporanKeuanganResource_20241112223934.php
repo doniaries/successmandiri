@@ -3,7 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LaporanKeuanganResource\Pages;
-use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganStatsWidget;
+// use App\Filament\Resources\LaporankeuanganStatWidget\Widgets\LaporankeuanganStatWidget;
 use App\Models\LaporanKeuangan;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -28,12 +28,12 @@ class LaporanKeuanganResource extends Resource
     protected static bool $shouldRegisterNavigation = true; // Tambahkan ini
 
 
-    public static function getWidgets(): array
-    {
-        return [
-            LaporanKeuanganStatsWidget::class,
-        ];
-    }
+    // public static function getWidgets(): array //daftarkan widget di sini
+    // {
+    //     return [
+    //         LaporankeuanganStatWidget::class
+    //     ];
+    // }
 
     // Navigation badges dan color
     public static function getNavigationBadge(): ?string

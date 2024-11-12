@@ -80,7 +80,7 @@ class PenjualResource extends Resource
                     ->label('Hutang')
                     ->alignCenter()
                     ->badge()
-                    ->color(fn($state) => $state > 0 ? 'primary' : 'success')
+                    ->color(fn($state) => $state > 0 ? 'danger' : 'success')
                     ->money('IDR')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('riwayat_bayar')

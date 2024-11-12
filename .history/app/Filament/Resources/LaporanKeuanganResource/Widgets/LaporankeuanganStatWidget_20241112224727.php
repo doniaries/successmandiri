@@ -1,6 +1,7 @@
 <?php
 
-namespace App\Filament\Resources\TransaksiDoResource\Widgets;
+namespace App\Filament\Resources\LaporankeuanganStatWidget\Widgets;
+
 
 use App\Models\TransaksiDo;
 use App\Models\Perusahaan;
@@ -10,11 +11,11 @@ use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Carbon\Carbon;
 
-class TransaksiDoStatWidget extends BaseWidget
+class LaporankeuanganStatWidget extends BaseWidget
 {
     protected static ?string $heading = 'Ringkasan Transaksi DO';
     protected static ?int $sort = 1;
-    protected static ?string $pollingInterval = '15s';
+    protected static ?string $pollingInterval = '10s';
 
     protected function getStats(): array
     {
@@ -31,8 +32,8 @@ class TransaksiDoStatWidget extends BaseWidget
             ->selectRaw('
                 COUNT(*) as jumlah_transaksi,
                 COALESCE(SUM(tonase), 0) as total_tonase,
-                COALESCE(SUM(pembayaran_hutang + biaya_lain + upah_bongkar), 0) as total_pemasukan,
-                COALESCE(SUM(sisa_bayar_penjual), 0) as total_pengeluaran
+                COALESCE(SUM(bayar_hutang + biaya_lain + upah_bongkar), 0) as total_pemasukan,
+                COALESCE(SUM(sisa_bayar), 0) as total_pengeluaran
             ')
             ->first();
 
@@ -40,7 +41,7 @@ class TransaksiDoStatWidget extends BaseWidget
         $laporanHariIni = LaporanKeuangan::where('tanggal', '>=', $today)
             ->selectRaw('
                 COALESCE(SUM(CASE
-                    WHEN jenis = "masuk" AND (kategori_do IN ("pembayaran_hutang", "biaya_lain", "upah_bongkar") OR kategori_operasional_id IS NOT NULL)
+                    WHEN jenis = "masuk" AND (kategori_do IN ("bayar_hutang", "biaya_lain", "upah_bongkar") OR kategori_operasional_id IS NOT NULL)
                     THEN nominal
                     ELSE 0
                 END), 0) as total_masuk,

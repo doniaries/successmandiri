@@ -16,8 +16,6 @@ class ListLaporanKeuangans extends ListRecords
             LaporanKeuanganStatsWidget::class,
         ];
     }
-
-
     protected function getHeaderActions(): array
     {
         return [];
