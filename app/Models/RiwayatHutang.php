@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RiwayatHutang extends Model
 {
@@ -20,16 +21,21 @@ class RiwayatHutang extends Model
         'operasional_id'
     ];
 
-    public function operasional()
+    public function entitas(): BelongsTo
     {
-        return $this->belongsTo(Operasional::class);
+        return $this->belongsTo(Penjual::class, 'entitas_id')
+            ->withTrashed();
     }
 
-    public function entitas()
+    public function transaksiDo(): BelongsTo
     {
-        return match ($this->tipe_entitas) {
-            'penjual' => $this->belongsTo(Penjual::class, 'entitas_id'),
-            default => null
-        };
+        return $this->belongsTo(TransaksiDo::class, 'transaksi_do_id')
+            ->withTrashed();
+    }
+
+    public function operasional(): BelongsTo
+    {
+        return $this->belongsTo(Operasional::class, 'operasional_id')
+            ->withTrashed();
     }
 }

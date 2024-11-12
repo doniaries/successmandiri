@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\RiwayatHutangResource\Pages;
 
 use App\Filament\Resources\RiwayatHutangResource;
-use Filament\Resources\Pages\ListRecords;
 use App\Filament\Resources\RiwayatHutangResource\Widgets\RiwayatHutangStatsWidget;
+use Filament\Resources\Pages\ListRecords;
 
 class ListRiwayatHutangs extends ListRecords
 {
