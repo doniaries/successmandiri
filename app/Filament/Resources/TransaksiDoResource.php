@@ -393,6 +393,8 @@ class TransaksiDoResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
+            ->poll('5s')
+            ->striped()
             ->striped()
             ->filters([
                 Tables\Filters\TrashedFilter::make(),

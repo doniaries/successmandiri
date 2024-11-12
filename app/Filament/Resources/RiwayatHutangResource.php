@@ -165,7 +165,51 @@ class RiwayatHutangResource extends Resource
                         return $state;
                     }),
             ])
-            // ... filters dan actions tetap sama ...
+            ->filters([
+                Tables\Filters\SelectFilter::make('tipe_entitas')
+                    ->label('Tipe')
+                    ->options([
+                        'penjual' => 'Penjual'
+                    ]),
+
+                Tables\Filters\SelectFilter::make('entitas')
+                    ->label('Nama')
+                    ->relationship('entitas', 'nama')
+                    ->searchable()
+                    ->preload()
+                    ->multiple(),
+
+                Tables\Filters\SelectFilter::make('jenis')
+                    ->label('Jenis')
+                    ->options([
+                        'penambahan' => 'Penambahan',
+                        'pengurangan' => 'Pengurangan'
+                    ])
+                    ->multiple(),
+
+                Tables\Filters\Filter::make('created_at')
+                    ->form([
+                        Forms\Components\DatePicker::make('dari_tanggal')
+                            ->label('Dari Tanggal'),
+                        Forms\Components\DatePicker::make('sampai_tanggal')
+                            ->label('Sampai Tanggal'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['dari_tanggal'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['sampai_tanggal'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+            ])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+            ])
+            ->bulkActions([])
             ->defaultSort('created_at', 'desc')
             ->poll('30s');
     }

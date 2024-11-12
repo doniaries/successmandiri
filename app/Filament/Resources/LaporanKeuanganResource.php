@@ -245,7 +245,9 @@ class LaporanKeuanganResource extends Resource
                             ->success()
                             ->send();
                     })
-            ]);
+            ])
+            ->poll('5s')
+            ->striped();
     }
 
     public static function getPages(): array

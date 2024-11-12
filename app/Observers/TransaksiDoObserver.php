@@ -11,9 +11,18 @@ class TransaksiDoObserver
     public function creating(TransaksiDo $transaksiDo)
     {
         try {
-            // 1. Simpan dan validasi hutang
+            // 1. Validasi data wajib
+            if (!$transaksiDo->tanggal) throw new \Exception("Tanggal wajib diisi");
+            if (!$transaksiDo->penjual_id) throw new \Exception("Penjual wajib dipilih");
+            if ($transaksiDo->tonase <= 0) throw new \Exception("Tonase harus lebih dari 0");
+            if ($transaksiDo->harga_satuan <= 0) throw new \Exception("Harga satuan harus lebih dari 0");
+
+            // 2. Simpan dan validasi hutang
             if ($transaksiDo->penjual_id) {
-                $transaksiDo->hutang_awal = $transaksiDo->penjual->hutang ?? 0;
+                $penjual = Penjual::find($transaksiDo->penjual_id);
+                if (!$penjual) throw new \Exception("Penjual tidak ditemukan");
+
+                $transaksiDo->hutang_awal = $penjual->hutang ?? 0;
 
                 if ($transaksiDo->pembayaran_hutang > $transaksiDo->hutang_awal) {
                     throw new \Exception(
@@ -21,38 +30,40 @@ class TransaksiDoObserver
                             ") melebihi hutang penjual (Rp " . number_format($transaksiDo->hutang_awal, 0, ',', '.') . ")"
                     );
                 }
+
+                // Hitung sisa hutang
+                $transaksiDo->sisa_hutang_penjual = max(0, $transaksiDo->hutang_awal - $transaksiDo->pembayaran_hutang);
             }
 
-            // 2. Hitung komponen keuangan
+            // 3. Hitung total dan sisa bayar
+            $transaksiDo->total = $transaksiDo->tonase * $transaksiDo->harga_satuan;
             $totalPemasukan = $transaksiDo->upah_bongkar + $transaksiDo->biaya_lain + $transaksiDo->pembayaran_hutang;
-            $totalPengeluaran = $transaksiDo->sisa_bayar;
-            $selisihDibutuhkan = $totalPengeluaran - $totalPemasukan;
+            $transaksiDo->sisa_bayar = max(0, $transaksiDo->total - $totalPemasukan);
 
-            // 3. Validasi saldo perusahaan
-            $saldoPerusahaan = Perusahaan::first()->saldo ?? 0;
-            if ($selisihDibutuhkan > $saldoPerusahaan) {
+            // 4. Validasi saldo perusahaan
+            $perusahaan = Perusahaan::first();
+            if (!$perusahaan) throw new \Exception("Data perusahaan tidak ditemukan");
+
+            if ($transaksiDo->sisa_bayar > $perusahaan->saldo) {
                 throw new \Exception(
-                    "Saldo tidak mencukupi untuk transaksi.\n" .
-                        "Saldo saat ini: Rp " . number_format($saldoPerusahaan, 0, ',', '.') . "\n" .
-                        "Dibutuhkan: Rp " . number_format($selisihDibutuhkan, 0, ',', '.')
+                    "Saldo perusahaan tidak mencukupi untuk transaksi.\n" .
+                        "Saldo saat ini: Rp " . number_format($perusahaan->saldo, 0, ',', '.') . "\n" .
+                        "Dibutuhkan: Rp " . number_format($transaksiDo->sisa_bayar, 0, ',', '.')
                 );
             }
 
-            // 4. Set nilai-nilai default
-            $transaksiDo->total = $transaksiDo->hitungTotal();
-            $transaksiDo->sisa_hutang_penjual = $transaksiDo->hitungSisaHutang();
-            $transaksiDo->sisa_bayar = $transaksiDo->hitungSisaBayar();
-
-            Log::info('TransaksiDO Creating:', [
-                'penjual_id' => $transaksiDo->penjual_id,
+            Log::info('Data DO Siap Disimpan:', [
+                'nomor' => $transaksiDo->nomor,
+                'penjual' => $penjual->nama,
+                'total' => $transaksiDo->total,
+                'pemasukan' => $totalPemasukan,
+                'sisa_bayar' => $transaksiDo->sisa_bayar,
                 'hutang_awal' => $transaksiDo->hutang_awal,
                 'pembayaran_hutang' => $transaksiDo->pembayaran_hutang,
-                'sisa_hutang' => $transaksiDo->sisa_hutang_penjual,
-                'total' => $transaksiDo->total,
-                'sisa_bayar' => $transaksiDo->sisa_bayar
+                'sisa_hutang' => $transaksiDo->sisa_hutang_penjual
             ]);
         } catch (\Exception $e) {
-            Log::error('Error Creating TransaksiDO:', [
+            Log::error('Error Validasi TransaksiDO:', [
                 'error' => $e->getMessage(),
                 'data' => $transaksiDo->toArray()
             ]);
@@ -65,43 +76,77 @@ class TransaksiDoObserver
         try {
             DB::beginTransaction();
 
-            // Get & track saldo
-            $saldoBerjalan = Perusahaan::first()->saldo ?? 0;
+            $perusahaan = Perusahaan::first();
+            if (!$perusahaan) throw new \Exception("Data perusahaan tidak ditemukan");
 
-            Log::info('Mulai Proses Transaksi DO:', [
-                'nomor_do' => $transaksiDo->nomor,
-                'saldo_awal' => $saldoBerjalan
-            ]);
+            $saldoBerjalan = $perusahaan->saldo;
 
-            // 1. Proses pemasukan
-            if ($transaksiDo->upah_bongkar > 0) {
-                $this->prosesTransaksiKeuangan(
-                    'masuk',
-                    'upah_bongkar',
-                    $transaksiDo->upah_bongkar,
-                    "Pemasukan Upah Bongkar DO #{$transaksiDo->nomor}",
-                    $transaksiDo,
-                    $saldoBerjalan
-                );
-                $saldoBerjalan += $transaksiDo->upah_bongkar;
+            // 1. Proses Pemasukan
+            $komponenPemasukan = [
+                'upah_bongkar' => [
+                    'nominal' => $transaksiDo->upah_bongkar,
+                    'keterangan' => "Pemasukan Upah Bongkar"
+                ],
+                'biaya_lain' => [
+                    'nominal' => $transaksiDo->biaya_lain,
+                    'keterangan' => "Pemasukan Biaya Lain"
+                ]
+            ];
+
+            foreach ($komponenPemasukan as $kategori => $data) {
+                if ($data['nominal'] > 0) {
+                    // Catat laporan keuangan
+                    $laporan = $this->createLaporanKeuangan([
+                        'tanggal' => $transaksiDo->tanggal,
+                        'jenis' => 'masuk',
+                        'tipe_transaksi' => 'transaksi_do',
+                        'kategori_do' => $kategori,
+                        'nominal' => $data['nominal'],
+                        'keterangan' => $data['keterangan'] . " DO #{$transaksiDo->nomor}",
+                        'saldo_sebelum' => $saldoBerjalan,
+                        'saldo_sesudah' => $saldoBerjalan + $data['nominal'],
+                        'transaksi_do_id' => $transaksiDo->id,
+                        'nomor_transaksi' => $transaksiDo->nomor,
+                        'nama_penjual' => $transaksiDo->penjual?->nama
+                    ]);
+
+                    // Update saldo
+                    $perusahaan->increment('saldo', $data['nominal']);
+                    $saldoBerjalan += $data['nominal'];
+
+                    Log::info("Pemasukan {$kategori} tercatat:", [
+                        'nominal' => $data['nominal'],
+                        'laporan_id' => $laporan->id
+                    ]);
+                }
             }
 
-            if ($transaksiDo->biaya_lain > 0) {
-                $this->prosesTransaksiKeuangan(
-                    'masuk',
-                    'biaya_lain',
-                    $transaksiDo->biaya_lain,
-                    "Pemasukan Biaya Lain DO #{$transaksiDo->nomor}",
-                    $transaksiDo,
-                    $saldoBerjalan
-                );
-                $saldoBerjalan += $transaksiDo->biaya_lain;
-            }
-
-            // 2. Proses pembayaran hutang
+            // 2. Proses Pembayaran Hutang
             if ($transaksiDo->pembayaran_hutang > 0 && $transaksiDo->penjual) {
+                // Catat pembayaran hutang di laporan keuangan
+                $laporan = $this->createLaporanKeuangan([
+                    'tanggal' => $transaksiDo->tanggal,
+                    'jenis' => 'masuk',
+                    'tipe_transaksi' => 'transaksi_do',
+                    'kategori_do' => 'pembayaran_hutang',
+                    'nominal' => $transaksiDo->pembayaran_hutang,
+                    'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}",
+                    'saldo_sebelum' => $saldoBerjalan,
+                    'saldo_sesudah' => $saldoBerjalan + $transaksiDo->pembayaran_hutang,
+                    'transaksi_do_id' => $transaksiDo->id,
+                    'nomor_transaksi' => $transaksiDo->nomor,
+                    'nama_penjual' => $transaksiDo->penjual->nama
+                ]);
+
+                // Update saldo perusahaan
+                $perusahaan->increment('saldo', $transaksiDo->pembayaran_hutang);
+                $saldoBerjalan += $transaksiDo->pembayaran_hutang;
+
+                // Update hutang penjual
+                $transaksiDo->penjual->decrement('hutang', $transaksiDo->pembayaran_hutang);
+
                 // Catat riwayat hutang
-                RiwayatHutang::create([
+                $riwayat = RiwayatHutang::create([
                     'tipe_entitas' => 'penjual',
                     'entitas_id' => $transaksiDo->penjual_id,
                     'nominal' => $transaksiDo->pembayaran_hutang,
@@ -112,46 +157,54 @@ class TransaksiDoObserver
                     'transaksi_do_id' => $transaksiDo->id
                 ]);
 
-                // Update hutang penjual
-                $transaksiDo->penjual->update(['hutang' => $transaksiDo->sisa_hutang_penjual]);
-
-                // Catat di laporan keuangan
-                $this->prosesTransaksiKeuangan(
-                    'masuk',
-                    'pembayaran_hutang',
-                    $transaksiDo->pembayaran_hutang,
-                    "Pembayaran Hutang DO #{$transaksiDo->nomor}",
-                    $transaksiDo,
-                    $saldoBerjalan
-                );
-                $saldoBerjalan += $transaksiDo->pembayaran_hutang;
+                Log::info('Pembayaran Hutang tercatat:', [
+                    'nominal' => $transaksiDo->pembayaran_hutang,
+                    'laporan_id' => $laporan->id,
+                    'riwayat_id' => $riwayat->id
+                ]);
             }
 
-            // 3. Proses pengeluaran/pembayaran DO
+            // 3. Proses Pembayaran Sisa DO
             if ($transaksiDo->sisa_bayar > 0) {
-                $this->prosesTransaksiKeuangan(
-                    'keluar',
-                    'pembayaran_do',
-                    $transaksiDo->sisa_bayar,
-                    "Pembayaran DO #{$transaksiDo->nomor}",
-                    $transaksiDo,
-                    $saldoBerjalan
-                );
-                $saldoBerjalan -= $transaksiDo->sisa_bayar;
+                // Catat pembayaran DO
+                $laporan = $this->createLaporanKeuangan([
+                    'tanggal' => $transaksiDo->tanggal,
+                    'jenis' => 'keluar',
+                    'tipe_transaksi' => 'transaksi_do',
+                    'kategori_do' => 'pembayaran_do',
+                    'nominal' => $transaksiDo->sisa_bayar,
+                    'keterangan' => "Pembayaran Sisa DO #{$transaksiDo->nomor}",
+                    'saldo_sebelum' => $saldoBerjalan,
+                    'saldo_sesudah' => $saldoBerjalan - $transaksiDo->sisa_bayar,
+                    'transaksi_do_id' => $transaksiDo->id,
+                    'nomor_transaksi' => $transaksiDo->nomor,
+                    'nama_penjual' => $transaksiDo->penjual->nama
+                ]);
+
+                // Update saldo
+                $perusahaan->decrement('saldo', $transaksiDo->sisa_bayar);
+
+                Log::info('Pembayaran Sisa DO tercatat:', [
+                    'nominal' => $transaksiDo->sisa_bayar,
+                    'laporan_id' => $laporan->id
+                ]);
             }
 
             DB::commit();
 
-            // 4. Kirim notifikasi sukses
+            // Kirim notifikasi sukses
             $this->sendSuccessNotification($transaksiDo);
 
-            Log::info('Transaksi DO Selesai:', [
-                'nomor_do' => $transaksiDo->nomor,
-                'saldo_akhir' => $saldoBerjalan
+            Log::info('TransaksiDO Berhasil:', [
+                'nomor' => $transaksiDo->nomor,
+                'saldo_akhir' => $perusahaan->fresh()->saldo
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error Transaksi DO:', ['error' => $e->getMessage()]);
+            Log::error('Error Proses TransaksiDO:', [
+                'error' => $e->getMessage(),
+                'data' => $transaksiDo->toArray()
+            ]);
             throw $e;
         }
     }
@@ -161,116 +214,78 @@ class TransaksiDoObserver
         try {
             DB::beginTransaction();
 
-            // 1. Kembalikan hutang penjual jika ada pembayaran
+            // 1. Simpan data awal untuk log
+            $dataPembatalan = [
+                'nomor_do' => $transaksiDo->nomor,
+                'pembayaran_hutang' => $transaksiDo->pembayaran_hutang,
+                'laporan_keuangan' => []
+            ];
+
+            // 2. Kembalikan hutang penjual jika ada pembayaran
             if ($transaksiDo->pembayaran_hutang > 0 && $transaksiDo->penjual) {
                 $hutangSebelum = $transaksiDo->penjual->hutang;
                 $transaksiDo->penjual->increment('hutang', $transaksiDo->pembayaran_hutang);
+                $hutangSesudah = $transaksiDo->penjual->fresh()->hutang;
 
                 // Catat di riwayat hutang
-                RiwayatHutang::create([
+                $riwayat = RiwayatHutang::create([
                     'tipe_entitas' => 'penjual',
                     'entitas_id' => $transaksiDo->penjual_id,
                     'nominal' => $transaksiDo->pembayaran_hutang,
                     'jenis' => 'penambahan',
                     'hutang_sebelum' => $hutangSebelum,
-                    'hutang_sesudah' => $transaksiDo->penjual->fresh()->hutang,
+                    'hutang_sesudah' => $hutangSesudah,
                     'keterangan' => "Pembatalan DO #{$transaksiDo->nomor}",
                     'transaksi_do_id' => $transaksiDo->id
                 ]);
+
+                $dataPembatalan['riwayat_hutang'] = [
+                    'id' => $riwayat->id,
+                    'hutang_sebelum' => $hutangSebelum,
+                    'hutang_sesudah' => $hutangSesudah
+                ];
             }
 
-            // 2. Hapus laporan keuangan terkait
+            // 3. Proses pembatalan laporan keuangan
             $laporanKeuangan = LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->get();
-
-            // Kembalikan saldo perusahaan
             $perusahaan = Perusahaan::first();
+
             foreach ($laporanKeuangan as $laporan) {
+                $saldoSebelum = $perusahaan->saldo;
+
                 if ($laporan->jenis === 'masuk') {
                     $perusahaan->decrement('saldo', $laporan->nominal);
                 } else {
                     $perusahaan->increment('saldo', $laporan->nominal);
                 }
+
+                $dataPembatalan['laporan_keuangan'][] = [
+                    'id' => $laporan->id,
+                    'jenis' => $laporan->jenis,
+                    'nominal' => $laporan->nominal,
+                    'saldo_sebelum' => $saldoSebelum,
+                    'saldo_sesudah' => $perusahaan->fresh()->saldo
+                ];
             }
 
-            // Hapus laporan
+            // 4. Hapus laporan
             LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->delete();
 
             DB::commit();
 
+            // Kirim notifikasi
             $this->sendDeleteNotification($transaksiDo);
 
-            Log::info('TransaksiDO Berhasil Dihapus:', [
-                'nomor_do' => $transaksiDo->nomor,
-                'saldo_akhir' => $perusahaan->fresh()->saldo
-            ]);
+            Log::info('TransaksiDO Berhasil Dibatalkan:', $dataPembatalan);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error Delete TransaksiDO:', ['error' => $e->getMessage()]);
-            throw $e;
-        }
-    }
 
-    private function checkDuplikasiTransaksi(int $transaksiDoId, string $kategori, float $nominal): bool
-    {
-        return LaporanKeuangan::where('transaksi_do_id', $transaksiDoId)
-            ->where('kategori_do', $kategori)
-            ->where('nominal', $nominal)
-            ->exists();
-    }
-
-    private function prosesTransaksiKeuangan(
-        string $jenis,
-        string $kategori,
-        float $nominal,
-        string $keterangan,
-        TransaksiDo $transaksiDo,
-        float $saldoBerjalan
-    ): void {
-        try {
-            Log::info('Proses Transaksi Keuangan:', [
-                'jenis' => $jenis,
-                'kategori' => $kategori,
-                'nominal' => $nominal,
-                'saldo_sebelum' => $saldoBerjalan
-            ]);
-
-            if (!$this->checkDuplikasiTransaksi($transaksiDo->id, $kategori, $nominal)) {
-                $this->createLaporanKeuangan([
-                    'tanggal' => $transaksiDo->tanggal,
-                    'jenis' => $jenis,
-                    'tipe_transaksi' => 'transaksi_do',
-                    'kategori_do' => $kategori,
-                    'keterangan' => $keterangan,
-                    'nominal' => $nominal,
-                    'saldo_sebelum' => $saldoBerjalan,
-                    'saldo_sesudah' => $jenis === 'masuk' ? $saldoBerjalan + $nominal : $saldoBerjalan - $nominal,
-                    'transaksi_do_id' => $transaksiDo->id,
-                    'nomor_transaksi' => $transaksiDo->nomor,
-                    'nama_penjual' => $transaksiDo->penjual?->nama
-                ]);
-
-                $perusahaan = Perusahaan::first();
-                if ($jenis === 'masuk') {
-                    $perusahaan->increment('saldo', $nominal);
-                } else {
-                    $perusahaan->decrement('saldo', $nominal);
-                }
-
-                Log::info('Transaksi Berhasil:', [
-                    'kategori' => $kategori,
-                    'saldo_sesudah' => $perusahaan->fresh()->saldo,
-                    'nomor_transaksi' => $transaksiDo->nomor
-                ]);
-            } else {
-                Log::info('Skip Transaksi (Duplikat):', [
-                    'kategori' => $kategori,
-                    'nominal' => $nominal
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('Error Proses Transaksi Keuangan:', [
+            Log::error('Error Pembatalan TransaksiDO:', [
                 'error' => $e->getMessage(),
-                'data' => compact('jenis', 'kategori', 'nominal', 'transaksiDo')
+                'data' => [
+                    'transaksi' => $transaksiDo->toArray(),
+                    'laporan_keuangan' => isset($laporanKeuangan) ? $laporanKeuangan->toArray() : null
+                ]
             ]);
             throw $e;
         }
@@ -278,31 +293,134 @@ class TransaksiDoObserver
 
     private function createLaporanKeuangan(array $data): LaporanKeuangan
     {
-        return LaporanKeuangan::create($data);
+        try {
+            // Validasi data wajib
+            $requiredFields = [
+                'tanggal',
+                'jenis',
+                'tipe_transaksi',
+                'nominal',
+                'saldo_sebelum',
+                'saldo_sesudah',
+                'keterangan'
+            ];
+
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field])) {
+                    throw new \Exception("Field {$field} wajib diisi pada laporan keuangan");
+                }
+            }
+
+            // Cek duplikasi transaksi
+            if ($data['tipe_transaksi'] === 'transaksi_do' && isset($data['transaksi_do_id'])) {
+                $exists = $this->checkDuplikasiTransaksi(
+                    $data['transaksi_do_id'],
+                    $data['kategori_do'] ?? null,
+                    $data['nominal']
+                );
+
+                if ($exists) {
+                    Log::info('Transaksi duplikat, dilewati:', [
+                        'transaksi_do_id' => $data['transaksi_do_id'],
+                        'kategori' => $data['kategori_do'] ?? null,
+                        'nominal' => $data['nominal']
+                    ]);
+                    return null;
+                }
+            }
+
+            $laporan = LaporanKeuangan::create($data);
+
+            Log::info('Laporan Keuangan dibuat:', [
+                'id' => $laporan->id,
+                'jenis' => $laporan->jenis,
+                'nominal' => $laporan->nominal,
+                'saldo_sebelum' => $laporan->saldo_sebelum,
+                'saldo_sesudah' => $laporan->saldo_sesudah
+            ]);
+
+            return $laporan;
+        } catch (\Exception $e) {
+            Log::error('Error membuat Laporan Keuangan:', [
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
+            throw $e;
+        }
+    }
+
+    private function checkDuplikasiTransaksi(int $transaksiDoId, ?string $kategori, float $nominal): bool
+    {
+        $query = LaporanKeuangan::where('transaksi_do_id', $transaksiDoId)
+            ->where('nominal', $nominal);
+
+        if ($kategori) {
+            $query->where('kategori_do', $kategori);
+        }
+
+        return $query->exists();
     }
 
     private function sendSuccessNotification(TransaksiDo $transaksiDo): void
     {
         $totalPemasukan = $transaksiDo->upah_bongkar + $transaksiDo->biaya_lain + $transaksiDo->pembayaran_hutang;
+        $totalPengeluaran = $transaksiDo->sisa_bayar;
+        $selisih = $totalPemasukan - $totalPengeluaran;
+
+        $message = "DO #{$transaksiDo->nomor}\n\n";
+        $message .= "Detail Transaksi:\n";
+        $message .= "- Tonase: " . number_format($transaksiDo->tonase, 0, ',', '.') . " Kg\n";
+        $message .= "- Total DO: Rp " . number_format($transaksiDo->total, 0, ',', '.') . "\n\n";
+
+        $message .= "Pemasukan:\n";
+        if ($transaksiDo->upah_bongkar > 0) {
+            $message .= "- Upah Bongkar: Rp " . number_format($transaksiDo->upah_bongkar, 0, ',', '.') . "\n";
+        }
+        if ($transaksiDo->biaya_lain > 0) {
+            $message .= "- Biaya Lain: Rp " . number_format($transaksiDo->biaya_lain, 0, ',', '.') . "\n";
+        }
+        if ($transaksiDo->pembayaran_hutang > 0) {
+            $message .= "- Bayar Hutang: Rp " . number_format($transaksiDo->pembayaran_hutang, 0, ',', '.') . "\n";
+        }
+        $message .= "Total Pemasukan: Rp " . number_format($totalPemasukan, 0, ',', '.') . "\n\n";
+
+        $message .= "Pengeluaran:\n";
+        $message .= "- Sisa Bayar DO: Rp " . number_format($totalPengeluaran, 0, ',', '.') . "\n\n";
+
+        $message .= "Selisih: Rp " . number_format($selisih, 0, ',', '.') . "\n";
+
+        if ($transaksiDo->pembayaran_hutang > 0) {
+            $message .= "\nInfo Hutang:\n";
+            $message .= "- Hutang Awal: Rp " . number_format($transaksiDo->hutang_awal, 0, ',', '.') . "\n";
+            $message .= "- Pembayaran: Rp " . number_format($transaksiDo->pembayaran_hutang, 0, ',', '.') . "\n";
+            $message .= "- Sisa Hutang: Rp " . number_format($transaksiDo->sisa_hutang_penjual, 0, ',', '.');
+        }
 
         Notification::make()
             ->title('Transaksi DO Berhasil')
-            ->body(
-                "DO #{$transaksiDo->nomor}\n" .
-                    "Pemasukan: Rp " . number_format($totalPemasukan, 0, ',', '.') . "\n" .
-                    "Pengeluaran: Rp " . number_format($transaksiDo->sisa_bayar, 0, ',', '.') . "\n" .
-                    "Selisih: Rp " . number_format($totalPemasukan - $transaksiDo->sisa_bayar, 0, ',', '.')
-            )
+            ->body($message)
             ->success()
             ->send();
     }
 
     private function sendDeleteNotification(TransaksiDo $transaksiDo): void
     {
+        $message = "DO #{$transaksiDo->nomor} telah dibatalkan\n\n";
+
+        if ($transaksiDo->pembayaran_hutang > 0) {
+            $message .= "Info Hutang:\n";
+            $message .= "- Hutang dikembalikan: Rp " . number_format($transaksiDo->pembayaran_hutang, 0, ',', '.') . "\n";
+            if ($transaksiDo->penjual) {
+                $message .= "- Hutang terkini: Rp " . number_format($transaksiDo->penjual->hutang, 0, ',', '.') . "\n";
+            }
+        }
+
+        $message .= "\nSemua transaksi keuangan terkait telah dibatalkan dan saldo dikembalikan.";
+
         Notification::make()
             ->title('Transaksi DO Dibatalkan')
-            ->body("DO #{$transaksiDo->nomor} telah dibatalkan dan saldo dikembalikan")
-            ->success()
+            ->body($message)
+            ->warning()
             ->send();
     }
 }

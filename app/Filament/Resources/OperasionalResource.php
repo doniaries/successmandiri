@@ -375,6 +375,8 @@ class OperasionalResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('tanggal', 'desc')
+            ->poll('5s')
+            ->striped()
             ->modifyQueryUsing(fn(Builder $query) => $query->latest('tanggal'))
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
