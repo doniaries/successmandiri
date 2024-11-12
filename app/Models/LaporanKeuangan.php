@@ -27,7 +27,9 @@ class LaporanKeuangan extends Model
         'saldo_sesudah',
         'transaksi_do_id',
         'operasional_id',
-        'created_by'
+        'created_by',
+        'nomor_transaksi',
+        'nama_penjual'
     ];
 
     protected $casts = [

@@ -4,8 +4,6 @@ namespace App\Filament\Resources\TransaksiDoResource\Pages;
 
 use App\Filament\Resources\TransaksiDoResource;
 use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDoStatWidget;
-use App\Filament\Widgets\TransaksiDOWidget;
-use App\Filament\Widgets\TransaksiWidget;
 use App\Models\Operasional; // Tambahkan ini
 use Illuminate\Support\Facades\DB; // Tambahkan ini
 use Filament\Actions;  // Ubah import ini

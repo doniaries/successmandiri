@@ -55,6 +55,11 @@ class PerusahaanResource extends Resource
                                     Forms\Components\TextInput::make('nama')
                                         ->required()
                                         ->maxLength(255),
+                                    Forms\Components\TextInput::make('saldo')
+                                        ->required()
+                                        ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
+                                        ->required()
+                                        ->prefix('Rp.'),
                                     Forms\Components\FileUpload::make('logo_path')
                                         ->label('Logo Perusahaan')
                                         ->image()
@@ -80,9 +85,7 @@ class PerusahaanResource extends Resource
                                     Forms\Components\TextInput::make('telepon')
                                         ->tel()
                                         ->maxLength(255),
-                                    // Forms\Components\TextInput::make('website')
-                                    //     ->url()
-                                    //     ->maxLength(255),
+
                                 ]),
                         ]),
 
@@ -94,8 +97,7 @@ class PerusahaanResource extends Resource
                                         ->maxLength(255),
                                     Forms\Components\TextInput::make('npwp')
                                         ->maxLength(30),
-                                    Forms\Components\TextInput::make('no_izin_usaha')
-                                        ->maxLength(50),
+
                                     Forms\Components\Select::make('kasir_id')
                                         ->label('Kasir')
                                         ->relationship('kasir', 'name')
@@ -118,6 +120,9 @@ class PerusahaanResource extends Resource
                     ->label('Logo'),
                 Tables\Columns\TextColumn::make('nama')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('saldo')
+                    ->money('IDR')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('pimpinan')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')

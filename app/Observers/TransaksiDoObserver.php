@@ -99,7 +99,7 @@ class TransaksiDoObserver
                         'masuk',
                         'upah_bongkar',
                         $transaksiDo->upah_bongkar,
-                        "Pemasukan Upah Bongkar DO #{$transaksiDo->nomor}",
+                        "Pemasukan Upah Bongkar DO",
                         $transaksiDo,
                         $saldoBerjalan
                     );
@@ -120,7 +120,7 @@ class TransaksiDoObserver
                         'masuk',
                         'biaya_lain',
                         $transaksiDo->biaya_lain,
-                        "Pemasukan Biaya Lain DO #{$transaksiDo->nomor}",
+                        "Pemasukan Biaya Lain DO",
                         $transaksiDo,
                         $saldoBerjalan
                     );
@@ -141,7 +141,7 @@ class TransaksiDoObserver
                         'masuk',
                         'bayar_hutang',
                         $transaksiDo->bayar_hutang,
-                        "Pembayaran Hutang DO #{$transaksiDo->nomor}",
+                        "Pembayaran Hutang DO",
                         $transaksiDo,
                         $saldoBerjalan
                     );
@@ -167,7 +167,7 @@ class TransaksiDoObserver
                         'keluar',
                         'pembayaran_do',
                         $transaksiDo->sisa_bayar,
-                        "Pembayaran Sisa DO #{$transaksiDo->nomor}",
+                        "Pembayaran Sisa DO",
                         $transaksiDo,
                         $saldoBerjalan
                     );
@@ -215,44 +215,104 @@ class TransaksiDoObserver
         try {
             DB::beginTransaction();
 
-            // 1. Ambil semua record laporan keuangan
-            $records = LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->get();
+            // Log awal proses
+            Log::info('Mulai Pembatalan Transaksi DO:', [
+                'nomor_do' => $transaksiDo->nomor,
+                'data_transaksi' => $transaksiDo->toArray()
+            ]);
 
-            // 2. Kembalikan saldo untuk setiap record
+            // 1. Ambil data perusahaan dan saldo awal
+            $perusahaan = Perusahaan::first();
+            $saldoAwal = $perusahaan->saldo;
+
+            // 2. Ambil data penjual
+            $penjual = Penjual::find($transaksiDo->penjual_id);
+            $hutangAwal = $penjual ? $penjual->hutang : 0;
+
+            // 3. Ambil semua record laporan keuangan
+            $records = LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)
+                ->orderBy('id', 'desc')  // Proses dari yang terakhir
+                ->get();
+
+            Log::info('Data Sebelum Pembatalan:', [
+                'saldo_perusahaan' => $saldoAwal,
+                'hutang_penjual' => $hutangAwal,
+                'records_to_rollback' => $records->count()
+            ]);
+
+            // 4. Kembalikan saldo dan hutang sesuai transaksi
             foreach ($records as $record) {
-                Perusahaan::where('id', auth()->user()->perusahaan_id)
-                    ->{$record->jenis === 'masuk' ? 'decrement' : 'increment'}('saldo', $record->nominal);
+                // A. Kembalikan saldo perusahaan
+                if ($record->jenis === 'masuk') {
+                    // Jika masuk, kurangi saldo
+                    $perusahaan->decrement('saldo', $record->nominal);
+                    Log::info('Mengurangi Saldo:', [
+                        'nominal' => $record->nominal,
+                        'kategori' => $record->kategori_do
+                    ]);
+                } else {
+                    // Jika keluar, tambah saldo
+                    $perusahaan->increment('saldo', $record->nominal);
+                    Log::info('Menambah Saldo:', [
+                        'nominal' => $record->nominal,
+                        'kategori' => $record->kategori_do
+                    ]);
+                }
+
+                // B. Kembalikan hutang jika ada pembayaran hutang
+                if ($record->kategori_do === 'bayar_hutang' && $penjual) {
+                    $penjual->increment('hutang', $record->nominal);
+                    Log::info('Mengembalikan Hutang:', [
+                        'nominal' => $record->nominal,
+                        'penjual' => $penjual->nama
+                    ]);
+                }
             }
 
-            // 3. Kembalikan hutang penjual jika ada pembayaran
-            if ($transaksiDo->bayar_hutang > 0) {
-                Penjual::where('id', $transaksiDo->penjual_id)
-                    ->increment('hutang', $transaksiDo->bayar_hutang);
-            }
-
-            // 4. Hapus records laporan keuangan
+            // 5. Hapus semua record laporan keuangan
             LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->delete();
+
+            // 6. Verifikasi saldo dan hutang
+            $perusahaan->refresh();
+            if ($penjual) {
+                $penjual->refresh();
+            }
+
+            Log::info('Data Setelah Pembatalan:', [
+                'saldo_akhir' => $perusahaan->saldo,
+                'hutang_akhir' => $penjual ? $penjual->hutang : 0,
+                'records_deleted' => $records->count()
+            ]);
 
             DB::commit();
 
-            $this->sendDeleteNotification($transaksiDo);
+            // 7. Kirim notifikasi sukses dengan detail
+            Notification::make()
+                ->title('Transaksi DO Dibatalkan')
+                ->body(
+                    "DO #{$transaksiDo->nomor} telah dibatalkan\n" .
+                        "Saldo dikembalikan ke: Rp " . number_format($perusahaan->saldo, 0, ',', '.') . "\n" .
+                        ($penjual ? "Hutang dikembalikan ke: Rp " . number_format($penjual->hutang, 0, ',', '.') : '')
+                )
+                ->success()
+                ->send();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error menghapus Transaksi DO:', [
+
+            Log::error('Error Pembatalan Transaksi DO:', [
                 'error' => $e->getMessage(),
                 'data' => $transaksiDo->toArray()
             ]);
 
             Notification::make()
                 ->title('Error!')
-                ->body('Terjadi kesalahan: ' . $e->getMessage())
+                ->body('Terjadi kesalahan saat membatalkan transaksi: ' . $e->getMessage())
                 ->danger()
                 ->send();
 
             throw $e;
         }
     }
-
     private function prosesTransaksiKeuangan(
         string $jenis,
         string $kategori,
@@ -281,6 +341,9 @@ class TransaksiDoObserver
                 'saldo_sebelum' => $saldoBerjalan,
                 'saldo_sesudah' => $jenis === 'masuk' ? $saldoBerjalan + $nominal : $saldoBerjalan - $nominal,
                 'transaksi_do_id' => $transaksiDo->id,
+                // Tambah data penjual dan nomor transaksi
+                'nomor_transaksi' => $transaksiDo->nomor,
+                'nama_penjual' => $transaksiDo->penjual?->nama
             ]);
 
             // 2. Update saldo perusahaan
@@ -294,7 +357,9 @@ class TransaksiDoObserver
             // Log setelah proses
             Log::info('Transaksi Berhasil:', [
                 'kategori' => $kategori,
-                'saldo_sesudah' => $perusahaan->fresh()->saldo
+                'saldo_sesudah' => $perusahaan->fresh()->saldo,
+                'nomor_transaksi' => $transaksiDo->nomor,
+                'nama_penjual' => $transaksiDo->penjual?->nama
             ]);
         } else {
             Log::info('Skip Transaksi (Duplikat):', [

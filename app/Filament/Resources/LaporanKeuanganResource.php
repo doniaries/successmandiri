@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LaporanKeuanganResource\Pages;
+use App\Filament\Resources\LaporankeuanganStatWidget\Widgets\LaporankeuanganStatWidget;
 use App\Models\LaporanKeuangan;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -27,6 +28,12 @@ class LaporanKeuanganResource extends Resource
     protected static bool $shouldRegisterNavigation = true; // Tambahkan ini
 
 
+    public static function getWidgets(): array //daftarkan widget di sini
+    {
+        return [
+            LaporankeuanganStatWidget::class
+        ];
+    }
 
     // Navigation badges dan color
     public static function getNavigationBadge(): ?string
@@ -155,6 +162,20 @@ class LaporanKeuanganResource extends Resource
                         return $record->kategoriOperasional?->nama ?? '-';
                     }),
 
+                Tables\Columns\TextColumn::make('nomor_transaksi')
+                    ->label('No. Transaksi')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('No. Transaksi Disalin'),
+
+                Tables\Columns\TextColumn::make('nama_penjual')
+                    ->label('Nama Penjual')
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Nama Penjual Disalin')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('keterangan')
                     ->limit(50)
                     ->searchable(),
@@ -166,16 +187,37 @@ class LaporanKeuanganResource extends Resource
                     ->color(fn(Model $record): string => $record->jenis === 'masuk' ? 'success' : 'danger')
                     ->weight('bold'),
 
-                Tables\Columns\TextColumn::make('saldo_sesudah')
-                    ->label('Saldo')
-                    ->money('IDR')
-                    ->alignment('right')
-                    ->color('info')
-                    ->weight('bold'),
+                // Tables\Columns\TextColumn::make('saldo_sesudah')
+                //     ->label('Saldo')
+                //     ->money('IDR')
+                //     ->alignment('right')
+                //     ->color('info')
+                //     ->weight('bold'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                // Your existing filters
+                Tables\Filters\SelectFilter::make('nama_penjual')
+                    ->label('Penjual')
+                    ->options(function () {
+                        return LaporanKeuangan::whereNotNull('nama_penjual')
+                            ->distinct()
+                            ->pluck('nama_penjual', 'nama_penjual')
+                            ->toArray();
+                    })
+                    ->multiple(),
+
+                Tables\Filters\Filter::make('nomor_transaksi')
+                    ->form([
+                        Forms\Components\TextInput::make('nomor_transaksi')
+                            ->label('Nomor Transaksi')
+                            ->placeholder('Cari nomor transaksi...')
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['nomor_transaksi'],
+                            fn(Builder $query, $nomor): Builder => $query->where('nomor_transaksi', 'like', "%{$nomor}%")
+                        );
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
