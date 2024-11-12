@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Perusahaan;
 use Illuminate\Database\Seeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use phpDocumentor\Reflection\Types\Null_;
 
 class PerusahaanSeeder extends Seeder
 {
@@ -22,41 +23,16 @@ class PerusahaanSeeder extends Seeder
         $perusahaans = [
             [
                 'nama' => 'CV SUCCESS MANDIRI',
-                'kode_perusahaan' => 'CSM',
-                'alamat' => 'Dusun Sungai Moran Nagari Kamang',
-                'kabupaten' => 'Sijunjung',
-                'provinsi' => 'Sumatera Barat',
-                'kode_pos' => '26152',
-                'telepon' => '+62 823-8921-9670',
-                'website' => 'www.cvsuccess.com',
-                'pimpinan' => 'Yondra',
-                'npwp' => '12.345.678.9-123.000',
-                'saldo' => 0,
-                'is_active' => true,
-                'keterangan' => 'Perusahaan pengolahan hasil bumi',
+                'saldo' => 10000000,
+                'logo_path' => null,
+                'favicon_path' => null,
                 'tema_warna' => 'amber',
-                'setting' => json_encode([
-                    'format_tanggal' => 'd/m/Y',
-                    'format_waktu' => 'H:i',
-                    'zona_waktu' => 'Asia/Jakarta',
-                    'bahasa' => 'id',
-                ]),
-            ],
-            [
-                'nama' => 'UD SUCCESS',
-                'kode_perusahaan' => 'UDS',
                 'alamat' => 'Dusun Sungai Moran Nagari Kamang',
-                'kabupaten' => 'Sijunjung',
-                'provinsi' => 'Sumatera Barat',
-                'kode_pos' => '26152',
                 'telepon' => '+62 823-8921-9670',
-                'email' => 'ud.success@example.com',
                 'pimpinan' => 'Yondra',
-                'npwp' => '98.765.432.1-123.000',
-                'saldo' => 0,
+                'kasir_id' => null,
+                'npwp' => '12.345.678.9-123.000',
                 'is_active' => true,
-                'keterangan' => 'Unit dagang hasil bumi',
-                'tema_warna' => 'blue',
                 'setting' => json_encode([
                     'format_tanggal' => 'd/m/Y',
                     'format_waktu' => 'H:i',
@@ -64,28 +40,7 @@ class PerusahaanSeeder extends Seeder
                     'bahasa' => 'id',
                 ]),
             ],
-            [
-                'nama' => 'KOPERASI SUCCESS',
-                'kode_perusahaan' => 'KPS',
-                'alamat' => 'Dusun Sungai Moran Nagari Kamang',
-                'kabupaten' => 'Sijunjung',
-                'provinsi' => 'Sumatera Barat',
-                'kode_pos' => '26152',
-                'telepon' => '+62 823-8921-9670',
-                'email' => 'koperasi.success@example.com',
-                'pimpinan' => 'Yondra',
-                'npwp' => '13.579.246.8-123.000',
-                'saldo' => 0,
-                'is_active' => true,
-                'keterangan' => 'Koperasi simpan pinjam dan hasil bumi',
-                'tema_warna' => 'green',
-                'setting' => json_encode([
-                    'format_tanggal' => 'd/m/Y',
-                    'format_waktu' => 'H:i',
-                    'zona_waktu' => 'Asia/Jakarta',
-                    'bahasa' => 'id',
-                ]),
-            ],
+
         ];
 
         foreach ($perusahaans as $perusahaan) {

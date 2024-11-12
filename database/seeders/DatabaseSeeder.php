@@ -34,18 +34,16 @@ class DatabaseSeeder extends Seeder
         // Buat data perusahaan default
         $perusahaan = Perusahaan::create([
             'nama' => 'CV SUCCESS MANDIRI',
+            'saldo' => 10000000,
             'logo_path' => null,
             'favicon_path' => null,
             'tema_warna' => 'amber',
             'alamat' => 'Dusun Sungai Moran Nagari Kamang',
             'email' => 'cv.success@example.com',
             'telepon' => '+62 823-8921-9670',
-            'website' => null,
             'pimpinan' => 'Yondra',
             'kasir_id' => $kasir->id,
-            'saldo' => 10000000,
             'npwp' => '12.345.678.9-123.000',
-            'no_izin_usaha' => 'SIUP-123/456/789',
             'setting' => json_encode([
                 'format_tanggal' => 'd/m/Y',
                 'format_waktu' => 'H:i',
