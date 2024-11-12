@@ -24,7 +24,6 @@ class DatabaseSeeder extends Seeder
 
         // Buat Kasir
         $kasir = User::create([
-            'id' => 2,
             'name' => 'Kasir 1',
             'email' => 'kasir1@gmail.com',
             'password' => Hash::make('password'),
@@ -37,9 +36,6 @@ class DatabaseSeeder extends Seeder
             PerusahaanSeeder::class,
 
         ]);
-
-        // Run PerusahaanSeeder and get the created perusahaan
-        $perusahaan = app(PerusahaanSeeder::class)->run();
 
         // Update kasir dengan perusahaan_id
         $kasir->update([

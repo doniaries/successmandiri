@@ -2,31 +2,47 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use App\Models\Perusahaan;
 use Illuminate\Database\Seeder;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Support\Facades\DB;
 
 class PerusahaanSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Run the database seeds.
+     */
+    public function run(): ?Perusahaan
     {
-        if (!Perusahaan::exists()) {
-            Perusahaan::create([
-                'nama' => 'CV SUCCESS MANDIRI',
-                'saldo' => 10000000,
-                'tema_warna' => 'amber',
-                'alamat' => 'Dusun Sungai Moran Nagari Kamang',
-                'telepon' => '+62 823-8921-9670',
-                'email' => 'cv.success@example.com',
-                'pimpinan' => 'Yondra',
-                'npwp' => '12.345.678.9-123.000',
-                'is_active' => true,
-                'setting' => json_encode([
-                    'format_tanggal' => 'd/m/Y',
-                    'format_waktu' => 'H:i',
-                    'zona_waktu' => 'Asia/Jakarta',
-                    'bahasa' => 'id'
-                ])
-            ]);
-        }
+        // Disable foreign key checks
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+        // Clear existing records
+        DB::table('users')->where('perusahaan_id', '!=', null)->delete();
+        Perusahaan::truncate();
+
+        // Create the main perusahaan
+        $perusahaan = Perusahaan::create([
+            'nama' => 'CV SUCCESS MANDIRI',
+            'alamat' => 'Dusun Sungai Moran Nagari Kamang',
+            'telepon' => '+62 823-8921-9670',
+            'pimpinan' => 'Yondra',
+            'npwp' => '12.345.678.9-123.000',
+            'saldo' => 10000000,
+            'is_active' => true,
+            'tema_warna' => 'amber',
+            'setting' => json_encode([
+                'format_tanggal' => 'd/m/Y',
+                'format_waktu' => 'H:i',
+                'zona_waktu' => 'Asia/Jakarta',
+                'bahasa' => 'id',
+            ], JSON_THROW_ON_ERROR)
+        ]);
+
+        // Re-enable foreign key checks
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        return $perusahaan;
     }
 }

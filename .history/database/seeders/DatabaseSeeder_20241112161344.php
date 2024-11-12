@@ -38,9 +38,6 @@ class DatabaseSeeder extends Seeder
 
         ]);
 
-        // Run PerusahaanSeeder and get the created perusahaan
-        $perusahaan = app(PerusahaanSeeder::class)->run();
-
         // Update kasir dengan perusahaan_id
         $kasir->update([
             'perusahaan_id' => $perusahaan->id
