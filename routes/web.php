@@ -12,6 +12,9 @@ Route::get('/', function () {
     return redirect('/admin');
 });
 
+Route::middleware(['auth', 'check.perusahaan'])->group(function () {
+    // routes yang membutuhkan data perusahaan
+});
 
 // Route::middleware([
 //     'auth:sanctum',

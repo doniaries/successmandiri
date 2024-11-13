@@ -53,6 +53,12 @@ class TransaksiDoObserver
                 );
             }
 
+            $perusahaan = Perusahaan::where('is_active', true)->first();
+            if (!$perusahaan) {
+                Log::error('Data perusahaan tidak ditemukan atau tidak aktif');
+                throw new \Exception("Data perusahaan tidak valid. Hubungi administrator.");
+            }
+
             Log::info('Data DO Siap Disimpan:', [
                 'nomor' => $transaksiDo->nomor,
                 'penjual' => $penjual->nama,

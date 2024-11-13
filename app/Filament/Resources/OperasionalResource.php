@@ -303,7 +303,7 @@ class OperasionalResource extends Resource
                 Tables\Columns\TextColumn::make('operasional')
                     ->label('Jenis')
                     ->badge()
-                    ->formatStateUsing(fn(string $state): string => Operasional::JENIS_OPERASIONAL[$state])
+                    ->formatStateUsing(fn(string $state): string => strval(Operasional::JENIS_OPERASIONAL[$state] ?? '-'))
                     ->color(fn(string $state): string => match ($state) {
                         'pengeluaran' => 'danger',
                         'pemasukan' => 'warning',

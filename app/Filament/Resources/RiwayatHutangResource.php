@@ -96,7 +96,7 @@ class RiwayatHutangResource extends Resource
                 Tables\Columns\TextColumn::make('jenis')
                     ->label('Jenis')
                     ->badge()
-                    ->formatStateUsing(fn(string $state): string => ucfirst($state))
+                    ->formatStateUsing(fn(string $state): string => strval(ucfirst($state)))
                     ->color(fn(string $state): string => match ($state) {
                         'penambahan' => 'danger',
                         'pengurangan' => 'success',

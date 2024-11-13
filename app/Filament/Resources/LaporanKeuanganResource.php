@@ -154,13 +154,17 @@ class LaporanKeuanganResource extends Resource
                         default => 'gray',
                     }),
 
+
+
                 Tables\Columns\TextColumn::make('kategori')
                     ->formatStateUsing(function (Model $record) {
                         if ($record->tipe_transaksi === 'transaksi_do') {
                             return LaporanKeuangan::KATEGORI_DO[$record->kategori_do] ?? '-';
                         }
                         return $record->kategoriOperasional?->nama ?? '-';
-                    }),
+                    })
+                    ->searchable()
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('nomor_transaksi')
                     ->label('No. Transaksi')

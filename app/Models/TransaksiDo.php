@@ -83,8 +83,7 @@ class TransaksiDo extends Model
     // Relasi dengan lazy eager loading
     public function penjual(): BelongsTo
     {
-        return $this->belongsTo(Penjual::class)
-            ->withDefault(['nama' => 'Penjual tidak ditemukan']);
+        return $this->belongsTo(Penjual::class);
     }
 
     public function laporanKeuangan()

@@ -42,7 +42,7 @@ class LaporanKeuangan extends Model
     // Relationships
     public function kategoriOperasional()
     {
-        return $this->belongsTo(KategoriOperasional::class, 'kategori_operasional_id');
+        return $this->belongsTo(KategoriOperasional::class);
     }
 
     public function transaksiDo()

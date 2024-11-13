@@ -274,7 +274,7 @@ class PenjualResource extends Resource
                         }
                     }),
             ])
-            ->paginated([10, 25, 50, 100, 'all'])
+            ->paginated([5, 10, 25, 50, 100, 'all'])
             ->deferLoading()
             ->poll('30s')
             ->persistSortInSession()

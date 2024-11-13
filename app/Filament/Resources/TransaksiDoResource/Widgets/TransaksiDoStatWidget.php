@@ -19,190 +19,124 @@ class TransaksiDoStatWidget extends BaseWidget
     protected function getStats(): array
     {
         try {
+            // Cek data perusahaan
             $perusahaan = Perusahaan::first();
             if (!$perusahaan) {
-                Log::warning('Data perusahaan tidak ditemukan');
-                return [];
-            }
-
-            $today = Carbon::today();
-            $yesterday = Carbon::yesterday();
-            $startDate = Carbon::now()->subDays(7)->startOfDay();
-            $endDate = Carbon::now()->endOfDay();
-
-            try {
-                $transaksiHariIni = TransaksiDo::where('tanggal', '>=', $today)
-                    ->selectRaw('
-                        COUNT(*) as jumlah_transaksi,
-                        COALESCE(SUM(tonase), 0) as total_tonase,
-                        COALESCE(SUM(pembayaran_hutang + biaya_lain + upah_bongkar), 0) as total_pemasukan,
-                        COALESCE(SUM(sisa_bayar), 0) as total_pengeluaran
-                    ')
-                    ->first();
-
-                // Laporan Keuangan hari ini
-                $laporanHariIni = LaporanKeuangan::where('tanggal', '>=', $today)
-                    ->selectRaw('
-                        COALESCE(SUM(CASE
-                            WHEN jenis = "masuk" AND (
-                                kategori_do IN ("pembayaran_hutang", "biaya_lain", "upah_bongkar") OR
-                                kategori_operasional_id IS NOT NULL
-                            )
-                            THEN nominal
-                            ELSE 0
-                        END), 0) as total_masuk,
-                        COALESCE(SUM(CASE
-                            WHEN jenis = "keluar" AND (
-                                kategori_do = "pembayaran_do" OR
-                                kategori_operasional_id IS NOT NULL
-                            )
-                            THEN nominal
-                            ELSE 0
-                        END), 0) as total_keluar
-                    ')
-                    ->first();
-
-                // Trend Charts
-                $trendPemasukan = $this->hitungTrendTransaksi('pemasukan');
-                $trendPengeluaran = $this->hitungTrendTransaksi('pengeluaran');
-                $chartTonase = $this->hitungTrendTonase();
-
-                // Perbandingan data
-                $comparisonData = $this->hitungPerbandingan();
-
-                // Log debugging
-                Log::info('Stats Data:', [
-                    'saldo' => $perusahaan->saldo,
-                    'pemasukan_hari_ini' => $laporanHariIni->total_masuk,
-                    'pengeluaran_hari_ini' => $laporanHariIni->total_keluar,
-                    'transaksi_stats' => $transaksiHariIni->toArray()
-                ]);
-
                 return [
-                    Stat::make('Saldo Saat Ini', 'Rp ' . number_format($perusahaan->saldo, 0, ',', '.'))
-                        ->description('Update otomatis setiap 5 detik')
-                        ->descriptionIcon('heroicon-m-arrow-path')
-                        ->color('success'),
-
-                    Stat::make('Pemasukan Hari Ini', 'Rp ' . number_format($laporanHariIni->total_masuk, 0, ',', '.'))
-                        ->description($this->formatPercentageChange($comparisonData['pemasukan_change']))
-                        ->descriptionIcon($comparisonData['pemasukan_change'] >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                        ->chart($trendPemasukan)
-                        ->color($comparisonData['pemasukan_change'] >= 0 ? 'success' : 'danger'),
-
-                    Stat::make('Pengeluaran Hari Ini', 'Rp ' . number_format($laporanHariIni->total_keluar, 0, ',', '.'))
-                        ->description($this->formatPercentageChange($comparisonData['pengeluaran_change']))
-                        ->descriptionIcon($comparisonData['pengeluaran_change'] <= 0 ? 'heroicon-m-arrow-trending-down' : 'heroicon-m-arrow-trending-up')
-                        ->chart($trendPengeluaran)
-                        ->color($comparisonData['pengeluaran_change'] <= 0 ? 'success' : 'danger'),
-
-                    Stat::make('Total Sawit Masuk', number_format($transaksiHariIni->total_tonase, 0, ',', '.') . ' Kg')
-                        ->description('Total ' . $transaksiHariIni->jumlah_transaksi . ' Transaksi')
-                        ->descriptionIcon('heroicon-m-scale')
-                        ->chart($chartTonase)
-                        ->color('success')
-                        ->extraAttributes([
-                            'class' => 'cursor-pointer transition-all hover:scale-105',
-                        ]),
+                    Stat::make('Status', 'Data Tidak Tersedia')
+                        ->description('Data perusahaan belum diatur')
+                        ->descriptionIcon('heroicon-m-exclamation-triangle')
+                        ->color('danger')
                 ];
-            } catch (\Exception $e) {
-                Log::error('Error mengambil data transaksi: ' . $e->getMessage());
-                return [];
             }
+
+            // Data transaksi hari ini
+            $transaksiHariIni = TransaksiDo::whereDate('tanggal', Carbon::today())
+                ->selectRaw('
+                COUNT(*) as total_transaksi,
+                COALESCE(SUM(CAST(tonase as DECIMAL)), 0) as total_tonase,
+                COALESCE(SUM(CAST(sisa_bayar as DECIMAL)), 0) as total_pengeluaran,
+                COALESCE(SUM(CAST(pembayaran_hutang as DECIMAL)), 0) as total_bayar_hutang,
+                COALESCE(SUM(CAST(biaya_lain as DECIMAL)), 0) as total_biaya_lain,
+                COALESCE(SUM(CAST(upah_bongkar as DECIMAL)), 0) as total_upah
+            ')
+                ->first();
+
+            // Pastikan value di-cast ke string
+            $totalTransaksi = (string)($transaksiHariIni->total_transaksi ?? 0);
+            $totalTonase = (string)($transaksiHariIni->total_tonase ?? 0);
+            $saldo = (string)($perusahaan->saldo ?? 0);
+            $totalPengeluaran = (string)($transaksiHariIni->total_pengeluaran ?? 0);
+
+            // Return stats yang sudah dipastikan tipe datanya string
+            return [
+                // Stat Saldo
+                Stat::make('Saldo Saat Ini', 'Rp ' . number_format((float)$saldo, 0, ',', '.'))
+                    ->description('Update otomatis')
+                    ->descriptionIcon('heroicon-m-arrow-path')
+                    ->color('success'),
+
+                // Stat Transaksi
+                Stat::make('Jumlah Transaksi', "$totalTransaksi Transaksi")
+                    ->description("Total $totalTonase Kg")
+                    ->descriptionIcon('heroicon-m-scale')
+                    ->color('primary'),
+
+                // Stat Pemasukan
+                Stat::make('Total Pemasukan Hari Ini', 'Rp ' . number_format((float)($transaksiHariIni->total_bayar_hutang + $transaksiHariIni->total_biaya_lain + $transaksiHariIni->total_upah), 0, ',', '.'))
+                    ->description('Hutang + Biaya + Upah')
+                    ->descriptionIcon('heroicon-m-arrow-trending-up')
+                    ->color('success'),
+
+                // Stat Pengeluaran
+                Stat::make('Total Pengeluaran Hari Ini', 'Rp ' . number_format((float)$totalPengeluaran, 0, ',', '.'))
+                    ->description('Pembayaran DO')
+                    ->descriptionIcon('heroicon-m-arrow-trending-down')
+                    ->color('danger')
+            ];
         } catch (\Exception $e) {
-            Log::error('Error di TransaksiDoStatWidget: ' . $e->getMessage());
-            return [];
+            Log::error('Error di widget stats: ' . $e->getMessage());
+            // Return fallback stats jika terjadi error
+            return [
+                Stat::make('Status', 'Error')
+                    ->description($e->getMessage())
+                    ->descriptionIcon('heroicon-m-x-circle')
+                    ->color('danger')
+            ];
         }
     }
 
-    private function hitungTrendTransaksi(string $tipe): array
+    private function getTransaksiHariIni($today)
     {
-        $startDate = Carbon::now()->subDays(7)->startOfDay();
-        $endDate = Carbon::now()->endOfDay();
-
-        $query = LaporanKeuangan::select(
-            DB::raw('DATE(tanggal) as date'),
-            DB::raw(
-                $tipe === 'pemasukan'
-                    ? 'COALESCE(SUM(CASE WHEN jenis = "masuk" THEN nominal ELSE 0 END), 0) as total'
-                    : 'COALESCE(SUM(CASE WHEN jenis = "keluar" THEN nominal ELSE 0 END), 0) as total'
-            )
-        )
-            ->whereBetween('tanggal', [$startDate, $endDate])
-            ->groupBy(DB::raw('DATE(tanggal)'))
-            ->orderBy('date', 'asc');
-
-        $dates = collect(range(0, 6))->map(function ($day) use ($startDate) {
-            return $startDate->copy()->addDays($day)->format('Y-m-d');
-        });
-
-        $data = $query->get()->pluck('total', 'date');
-
-        return $dates->map(function ($date) use ($data) {
-            return $data[$date] ?? 0;
-        })->values()->toArray();
+        return TransaksiDo::where('tanggal', '>=', $today)
+            ->selectRaw('
+                COUNT(*) as jumlah_transaksi,
+                COALESCE(SUM(tonase), 0) as total_tonase,
+                COALESCE(SUM(pembayaran_hutang), 0) as total_bayar_hutang,
+                COALESCE(SUM(biaya_lain), 0) as total_biaya_lain,
+                COALESCE(SUM(upah_bongkar), 0) as total_upah_bongkar,
+                COALESCE(SUM(sisa_bayar), 0) as total_sisa_bayar
+            ')
+            ->first();
     }
 
-    private function hitungTrendTonase(): array
+    private function getLaporanKeuanganHariIni($today)
     {
-        $startDate = Carbon::now()->subDays(7)->startOfDay();
-        $endDate = Carbon::now()->endOfDay();
-
-        $query = TransaksiDo::select(
-            DB::raw('DATE(tanggal) as date'),
-            DB::raw('COALESCE(SUM(tonase), 0) as total_tonase')
-        )
-            ->whereBetween('tanggal', [$startDate, $endDate])
-            ->groupBy(DB::raw('DATE(tanggal)'))
-            ->orderBy('date', 'asc');
-
-        $dates = collect(range(0, 6))->map(function ($day) use ($startDate) {
-            return $startDate->copy()->addDays($day)->format('Y-m-d');
-        });
-
-        $data = $query->get()->pluck('total_tonase', 'date');
-
-        return $dates->map(function ($date) use ($data) {
-            return $data[$date] ?? 0;
-        })->values()->toArray();
-    }
-
-    private function hitungPerbandingan(): array
-    {
-        $today = Carbon::today();
-        $yesterday = Carbon::yesterday();
-
-        $dataHariIni = LaporanKeuangan::where('tanggal', '>=', $today)
+        return LaporanKeuangan::where('tanggal', '>=', $today)
             ->selectRaw('
                 COALESCE(SUM(CASE WHEN jenis = "masuk" THEN nominal ELSE 0 END), 0) as total_masuk,
                 COALESCE(SUM(CASE WHEN jenis = "keluar" THEN nominal ELSE 0 END), 0) as total_keluar
             ')
             ->first();
-
-        $dataKemarin = LaporanKeuangan::whereBetween('tanggal', [$yesterday, $today])
-            ->selectRaw('
-                COALESCE(SUM(CASE WHEN jenis = "masuk" THEN nominal ELSE 0 END), 0) as total_masuk,
-                COALESCE(SUM(CASE WHEN jenis = "keluar" THEN nominal ELSE 0 END), 0) as total_keluar
-            ')
-            ->first();
-
-        $pemasukanChange = $dataKemarin->total_masuk > 0
-            ? (($dataHariIni->total_masuk - $dataKemarin->total_masuk) / $dataKemarin->total_masuk) * 100
-            : ($dataHariIni->total_masuk > 0 ? 100 : 0);
-
-        $pengeluaranChange = $dataKemarin->total_keluar > 0
-            ? (($dataHariIni->total_keluar - $dataKemarin->total_keluar) / $dataKemarin->total_keluar) * 100
-            : ($dataHariIni->total_keluar > 0 ? 100 : 0);
-
-        return [
-            'pemasukan_change' => $pemasukanChange,
-            'pengeluaran_change' => $pengeluaranChange,
-        ];
     }
 
-    private function formatPercentageChange(float $change): string
+    private function getKomponenPemasukan($transaksiHariIni): string
     {
-        $symbol = $change >= 0 ? '+' : '';
-        return sprintf("%s%.1f%% dari kemarin", $symbol, $change);
+        $komponenPemasukan = [];
+
+        if ($transaksiHariIni->total_bayar_hutang > 0) {
+            $komponenPemasukan[] = 'Hutang: Rp ' . number_format($transaksiHariIni->total_bayar_hutang, 0, ',', '.');
+        }
+
+        if ($transaksiHariIni->total_biaya_lain > 0) {
+            $komponenPemasukan[] = 'Biaya Lain: Rp ' . number_format($transaksiHariIni->total_biaya_lain, 0, ',', '.');
+        }
+
+        if ($transaksiHariIni->total_upah_bongkar > 0) {
+            $komponenPemasukan[] = 'Upah: Rp ' . number_format($transaksiHariIni->total_upah_bongkar, 0, ',', '.');
+        }
+
+        return empty($komponenPemasukan) ?
+            'Belum ada pemasukan' :
+            implode(', ', $komponenPemasukan);
+    }
+
+    private function getKomponenPengeluaran($transaksiHariIni): string
+    {
+        if ($transaksiHariIni && $transaksiHariIni->total_sisa_bayar > 0) {
+            return 'DO: Rp ' . number_format($transaksiHariIni->total_sisa_bayar, 0, ',', '.');
+        }
+
+        return 'Belum ada pengeluaran';
     }
 }

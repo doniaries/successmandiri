@@ -37,6 +37,10 @@ class KategoriOperasional extends Model
     ];
 
 
+    public function laporanKeuangan()
+    {
+        return $this->hasMany(LaporanKeuangan::class);
+    }
 
     public function operasional()
     {
