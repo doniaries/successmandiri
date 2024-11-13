@@ -412,12 +412,23 @@ class TransaksiDoResource extends Resource
                     ->color(Color::Orange)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('sisa_hutang_penjual')
+                Tables\Columns\TextColumn::make('sisa_hutang_penjual')  // Sesuaikan dengan nama kolom di database
                     ->label('Sisa Hutang')
                     ->money('IDR')
                     ->state(function (TransaksiDo $record): int {
-                        return max(0, $record->hutang - $record->pembayaran_hutang_awal);
-                    }),
+                        // Gunakan field sisa_hutang_penjual yang sudah dihitung
+                        return $record->sisa_hutang_penjual ?? max(0, $record->hutang_awal - $record->pembayaran_hutang);
+                    })
+                    ->sortable()
+                    ->summarize([
+                        Tables\Columns\Summarizers\Sum::make()
+                            ->money('IDR')
+                    ])
+                    ->alignRight() // Opsional: untuk alignment nominal uang
+                    ->color(
+                        fn(TransaksiDo $record): string =>
+                        $record->sisa_hutang_penjual > 0 ? 'danger' : 'success'
+                    ),
 
                 Tables\Columns\TextColumn::make('sisa_bayar')
                     ->label('Sisa Bayar')
@@ -476,6 +487,18 @@ class TransaksiDoResource extends Resource
             ->emptyStateIcon('heroicon-o-banknotes');
     }
 
+    // Tambahan untuk memastikan data diload dengan benar
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ])
+            ->select(['transaksi_do.*']) // Pastikan semua kolom yang dibutuhkan
+            ->with(['penjual']); // Eager load relasi yang dibutuhkan
+    }
+
+
     // Helper method untuk update sisa bayar
     private static function updateSisaBayar(Forms\Get $get, Forms\Set $set): void
     {
@@ -490,15 +513,15 @@ class TransaksiDoResource extends Resource
 
     //---------------------------------//
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ])
-            ->with(['penjual'])
-            ->latest();
-    }
+    // public static function getEloquentQuery(): Builder
+    // {
+    //     return parent::getEloquentQuery()
+    //         ->withoutGlobalScopes([
+    //             SoftDeletingScope::class,
+    //         ])
+    //         ->with(['penjual'])
+    //         ->latest();
+    // }
 
 
     public static function getPages(): array
