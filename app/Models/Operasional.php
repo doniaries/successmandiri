@@ -83,6 +83,11 @@ class Operasional extends Model
         };
     }
 
+    public function transaksiDo()
+    {
+        return $this->belongsTo(TransaksiDo::class, 'transaksi_do_id');
+    }
+
     public function kategori()
     {
         return $this->belongsTo(KategoriOperasional::class, 'kategori_id');

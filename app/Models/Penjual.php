@@ -11,6 +11,8 @@ class Penjual extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $with = ['riwayatHutangTerbaru']; // Eager load riwayat hutang terbaru
+
     protected $fillable = [
         'nama',
         'alamat',
@@ -25,13 +27,28 @@ class Penjual extends Model
     public function riwayatHutang()
     {
         return $this->hasMany(RiwayatHutang::class, 'entitas_id')
-            ->where('tipe_entitas', 'penjual');
+            ->where('tipe_entitas', 'penjual')
+            ->select(['id', 'entitas_id', 'nominal', 'jenis', 'created_at'])
+            ->latest();
     }
 
-
-    public function transaksiDo(): HasMany
+    public function riwayatHutangTerbaru()
     {
-        return $this->hasMany(TransaksiDo::class);
+        return $this->riwayatHutang()->take(5);
+    }
+
+    // Custom accessor for formatted hutang
+    public function getFormattedHutangAttribute()
+    {
+        return 'Rp ' . number_format($this->hutang, 0, ',', '.');
+    }
+
+    // Relationships with optimized queries
+    public function transaksiDo()
+    {
+        return $this->hasMany(TransaksiDo::class)
+            ->select(['id', 'penjual_id', 'nomor', 'tanggal', 'total', 'status_bayar'])
+            ->latest();
     }
 
     public function updateHutang(float $amount, string $type = 'add'): void
@@ -57,5 +74,18 @@ class Penjual extends Model
                 ]);
             }
         });
+    }
+
+    // Scopes
+    public function scopeWithTransaksiStats($query)
+    {
+        return $query->withCount('transaksiDo')
+            ->withSum('transaksiDo', 'total')
+            ->withSum('riwayatHutang', 'nominal');
+    }
+
+    public function scopeHasHutang($query)
+    {
+        return $query->where('hutang', '>', 0);
     }
 }

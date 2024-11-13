@@ -98,6 +98,14 @@ class PenjualResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Filter::make('hutang_status')
+                    ->query(function (Builder $query, array $data) {
+                        return $query->when(
+                            $data['value'] === 'dengan_hutang',
+                            fn($q) => $q->hasHutang()
+                        );
+                    }),
+
                 Tables\Filters\SelectFilter::make('hutang_status')
                     ->label('Status Hutang')
                     ->options([
@@ -272,8 +280,11 @@ class PenjualResource extends Resource
                         }
                     }),
             ])
-            ->poll('5s')
-            ->striped()
+            ->defaultPaginationPageSize(25)
+            ->deferLoading()
+            ->poll('30s')
+            ->persistFilters()
+            ->persistSortInSession()
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->requiresConfirmation()
@@ -296,6 +307,17 @@ class PenjualResource extends Resource
         ];
     }
 
+    //eager loading transaksi stats
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withTransaksiStats()
+            ->when(!auth()->user()->isAdmin(), function ($query) {
+                return $query->whereHas('transaksiDo', function ($q) {
+                    $q->where('created_at', '>=', now()->subMonths(3));
+                });
+            });
+    }
 
     public static function getPages(): array
     {

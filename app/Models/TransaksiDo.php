@@ -14,6 +14,7 @@ class TransaksiDo extends Model
     use HasFactory, SoftDeletes, GenerateMonthlyNumber;
 
     protected $table = 'transaksi_do';
+    protected $with = ['penjual']; // Default eager loading
 
     protected $fillable = [
         'nomor',
@@ -47,15 +48,15 @@ class TransaksiDo extends Model
     // MASIH DIPAKAI - Update casting untuk kolom baru
     protected $casts = [
         'tanggal' => 'datetime',
-        'tonase' => 'integer',
-        'harga_satuan' => 'integer',
-        'total' => 'integer',
+        'tonase' => 'decimal:2',
+        'harga_satuan' => 'decimal:0',
+        'total' => 'decimal:0',
         'upah_bongkar' => 'integer',
         'biaya_lain' => 'integer',
-        'hutang_awal' => 'integer',         // Updated
-        'pembayaran_hutang' => 'integer',   // Updated
-        'sisa_hutang_penjual' => 'integer', // Updated
-        'sisa_bayar' => 'integer',
+        'hutang_awal' => 'decimal:0',         // Updated
+        'pembayaran_hutang' => 'decimal:0',   // Updated
+        'sisa_hutang_penjual' => 'decimal:0', // Updated
+        'sisa_bayar' => 'decimal:0',
         'status_bayar' => 'string',
     ];
 
@@ -70,18 +71,22 @@ class TransaksiDo extends Model
         'status_bayar' => 'Belum Lunas',
     ];
 
-    // Relations
-    public function penjual(): BelongsTo
+    // Relationships
+    public function penjual()
     {
-        return $this->belongsTo(Penjual::class);
+        return $this->belongsTo(Penjual::class)
+            ->select(['id', 'nama', 'hutang', 'alamat', 'telepon']);
     }
 
-    public function laporanKeuangan(): HasMany
+    public function laporanKeuangan()
     {
         return $this->hasMany(LaporanKeuangan::class);
     }
 
-
+    public function operasional()
+    {
+        return $this->hasMany(Operasional::class, 'transaksi_do_id');
+    }
 
     // Accessor untuk hutang penjual
     public function getHutangPenjualAttribute(): int
@@ -95,10 +100,13 @@ class TransaksiDo extends Model
         return $this->tonase * $this->harga_satuan;
     }
 
-    public function riwayatHutang(): HasMany  // DITAMBAH - Relation baru
+    public function riwayatHutang()
     {
-        return $this->hasMany(RiwayatHutang::class);
+        return $this->hasMany(RiwayatHutang::class)
+            ->latest()
+            ->select(['id', 'transaksi_do_id', 'nominal', 'jenis', 'created_at']);
     }
+
 
     public function hitungSisaBayar(): int  // Dari private menjadi public
     {
@@ -108,5 +116,35 @@ class TransaksiDo extends Model
     public function hitungSisaHutang(): int  // Dari private menjadi public
     {
         return max(0, $this->hutang_awal - $this->pembayaran_hutang);
+    }
+
+    // Scopes
+    public function scopeWithCompleteData($query)
+    {
+        return $query->with([
+            'penjual',
+            'riwayatHutang' => fn($q) => $q->latest()->take(5),
+            'laporanKeuangan' => fn($q) => $q->select(['id', 'transaksi_do_id', 'nominal', 'jenis', 'created_at'])
+        ]);
+    }
+
+    public function scopeRecentTransactions($query, $days = 30)
+    {
+        return $query->where('tanggal', '>=', now()->subDays($days));
+    }
+
+    // Optional: Tambahkan scope untuk eager loading
+    public function scopeWithOperasional($query)
+    {
+        return $query->with(['operasional' => function ($q) {
+            $q->select([
+                'id',
+                'transaksi_do_id',
+                'tanggal',
+                'operasional',
+                'nominal',
+                'kategori_id'
+            ]);
+        }]);
     }
 }

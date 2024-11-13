@@ -468,6 +468,27 @@ class TransaksiDoResource extends Resource
     }
 
     //---------------------------------//
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'penjual', // Load relasi penjual
+                'riwayatHutang',
+                'operasional' => function ($query) {
+                    $query->with('kategori'); // Nested eager loading
+                }
+            ])
+            ->withCount([
+                'operasional as total_operasional',
+                'riwayatHutang as total_pembayaran'
+            ])
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
+
     public static function getPages(): array
     {
         return [
@@ -477,13 +498,13 @@ class TransaksiDoResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
+    // public static function getEloquentQuery(): Builder
+    // {
+    //     return parent::getEloquentQuery()
+    //         ->withoutGlobalScopes([
+    //             SoftDeletingScope::class,
+    //         ]);
+    // }
 
     public static function getNavigationBadgeColor(): ?string
     {
