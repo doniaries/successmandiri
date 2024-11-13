@@ -29,7 +29,7 @@ class PerusahaanSeeder extends Seeder
             'telepon' => '+62 823-8921-9670',
             'pimpinan' => 'Yondra',
             'npwp' => '12.345.678.9-123.000',
-            'saldo' => 10000000,
+            'saldo' => 100000000,
             'is_active' => true,
             'tema_warna' => 'amber',
             'setting' => json_encode([
@@ -47,7 +47,7 @@ class PerusahaanSeeder extends Seeder
             'telepon' => '+62 852-7845-1122',
             'pimpinan' => 'Yondra',
             'npwp' => '12.345.678.9-124.000',
-            'saldo' => 15000000,
+            'saldo' => 150000000,
             'is_active' => true,
             'tema_warna' => 'blue',
             'setting' => json_encode([
@@ -64,7 +64,7 @@ class PerusahaanSeeder extends Seeder
             'telepon' => '+62 813-6677-8899',
             'pimpinan' => 'Yondra',
             'npwp' => '12.345.678.9-125.000',
-            'saldo' => 12000000,
+            'saldo' => 120000000,
             'is_active' => true,
             'tema_warna' => 'green',
             'setting' => json_encode([
