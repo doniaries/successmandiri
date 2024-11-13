@@ -33,8 +33,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
-            PenjualSeeder::class,
             PerusahaanSeeder::class,
+            PenjualSeeder::class,
 
         ]);
 

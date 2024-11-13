@@ -40,253 +40,228 @@ class OperasionalResource extends Resource
     {
         return $form
             ->schema([
-                // Section 1: Informasi Dasar
-                Forms\Components\Section::make('Informasi Dasar')
-                    ->description('Masukkan informasi dasar operasional')
+                Forms\Components\Card::make()
                     ->schema([
-                        Forms\Components\DateTimePicker::make('tanggal')
-                            ->label('Tanggal')
-                            ->timezone('Asia/Jakarta')
-                            ->displayFormat('d/m/Y H:i')
-                            ->default(now())
-                            ->required()
-                            ->columnSpan('full'),
-
-                        Forms\Components\Select::make('operasional')
-                            ->label('Jenis Operasional')
-                            ->options(Operasional::JENIS_OPERASIONAL)
-                            ->required()
-                            ->native(false)
-                            ->live()
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                $set('kategori_id', null);
-                                $set('tipe_nama', null);
-                                $set('penjual_id', null);
-                                $set('user_id', null);
-                            })
-                            ->columnSpan('full'),
-
-                        Forms\Components\Select::make('kategori_id')
-                            ->label('Kategori')
-                            ->options(function (Forms\Get $get) {
-                                return KategoriOperasional::query()
-                                    ->where('jenis', $get('operasional'))
-                                    ->pluck('nama', 'id');
-                            })
-                            ->required()
-                            ->native(false)
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->visible(fn(Forms\Get $get) => filled($get('operasional')))
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('nama')
-                                    ->required()
-                                    ->maxLength(255),
-                                Forms\Components\Select::make('jenis')
-                                    ->options(KategoriOperasional::JENIS_KATEGORI)
+                        Forms\Components\Section::make('Informasi Dasar')
+                            ->description('Masukkan informasi dasar operasional')
+                            ->schema([
+                                Forms\Components\DateTimePicker::make('tanggal')
+                                    ->label('Tanggal')
+                                    ->timezone('Asia/Jakarta')
+                                    ->displayFormat('d/m/Y H:i')
+                                    ->default(now())
                                     ->required(),
-                                Forms\Components\TextInput::make('keterangan')
-                                    ->maxLength(255),
-                            ])
-                            ->columnSpan('full'),
-                    ])
-                    ->columns(2),
 
-                // Section 2: Detail Transaksi
-                Forms\Components\Section::make('Detail Transaksi')
-                    ->description('Pilih tipe dan nama terkait')
-                    ->schema([
-                        Forms\Components\Select::make('tipe_nama')
-                            ->label('Tipe')
-                            ->options([
-                                'penjual' => 'Penjual',
-                                'user' => 'Karyawan',
-                                'pekerja' => 'Pekerja',
-                            ])
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                $set('penjual_id', null);
-                                $set('user_id', null);
-                                $set('pekerja_id', null);
-                                $set('info_hutang', null);
-                                $set('jumlah_hutang', 0);
-                            })
-                            ->columnSpan('full')
-                            ->visible(fn(Forms\Get $get) => filled($get('kategori_id'))),
-
-                        // Field Penjual
-                        Forms\Components\Select::make('penjual_id')
-                            ->label('Nama Penjual')
-                            ->relationship('penjual', 'nama')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('nama')
+                                Forms\Components\Select::make('operasional')
+                                    ->label('Jenis Operasional')
+                                    ->options(Operasional::JENIS_OPERASIONAL)
                                     ->required()
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('alamat')
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('telepon')
-                                    ->maxLength(255),
-                            ])
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                if ($state) {
-                                    $penjual = \App\Models\Penjual::find($state);
-                                    if ($penjual) {
-                                        $set('info_hutang', "Rp " . number_format($penjual->hutang, 0, ',', '.'));
-                                        $set('jumlah_hutang', $penjual->hutang);
-                                    }
-                                } else {
-                                    $set('info_hutang', null);
-                                    $set('jumlah_hutang', 0);
-                                }
-                            })
-                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual')
-                            ->columnSpan('full'),
+                                    ->native(false)
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        $set('kategori_id', null);
+                                        $set('tipe_nama', null);
+                                        $set('penjual_id', null);
+                                        $set('user_id', null);
+                                    }),
 
-                        // Field Pekerja
-                        Forms\Components\Select::make('pekerja_id')
-                            ->label('Nama Pekerja')
-                            ->relationship(
-                                name: 'pekerja',
-                                titleAttribute: 'nama',
-                                modifyQueryUsing: fn(Builder $query) => $query->whereNull('deleted_at')
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('nama')
+                                Forms\Components\Select::make('kategori_id')
+                                    ->label('Kategori')
+                                    ->options(function (Forms\Get $get) {
+                                        return KategoriOperasional::query()
+                                            ->where('jenis', $get('operasional'))
+                                            ->pluck('nama', 'id');
+                                    })
                                     ->required()
-                                    ->maxLength(255)
-                                    ->label('Nama Pekerja'),
-                                Forms\Components\TextInput::make('alamat')
-                                    ->maxLength(255)
-                                    ->label('Alamat'),
-                                Forms\Components\TextInput::make('telepon')
-                                    ->maxLength(255)
-                                    ->label('No. Telepon'),
-                                Forms\Components\TextInput::make('pendapatan')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->prefix('Rp')
-                                    ->label('Pendapatan'),
-                                Forms\Components\TextInput::make('hutang')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->prefix('Rp')
-                                    ->label('Hutang'),
+                                    ->native(false)
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->visible(fn(Forms\Get $get) => filled($get('operasional')))
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('nama')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\Select::make('jenis')
+                                            ->options(KategoriOperasional::JENIS_KATEGORI)
+                                            ->required(),
+                                        Forms\Components\TextInput::make('keterangan')
+                                            ->maxLength(255),
+                                    ])
                             ])
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                if ($state) {
-                                    $pekerja = \App\Models\Pekerja::find($state);
-                                    if ($pekerja) {
-                                        $set('info_hutang', "Rp " . number_format($pekerja->hutang, 0, ',', '.'));
-                                        $set('jumlah_hutang', $pekerja->hutang);
-                                    }
-                                } else {
-                                    $set('info_hutang', null);
-                                    $set('jumlah_hutang', 0);
-                                }
-                            })
-                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja')
-                            ->columnSpan('full'),
+                            ->columns(1),
 
-                        // Field User/Karyawan
-                        Forms\Components\Select::make('user_id')
-                            ->label('Nama Karyawan')
-                            ->relationship('user', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user')
-                            ->columnSpan('full'),
+                        Forms\Components\Section::make('Detail Transaksi')
+                            ->description('Pilih tipe dan nama terkait')
+                            ->schema([
+                                Forms\Components\Select::make('tipe_nama')
+                                    ->label('Tipe')
+                                    ->options([
+                                        'penjual' => 'Penjual',
+                                        'user' => 'Karyawan',
+                                        'pekerja' => 'Pekerja',
+                                    ])
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        $set('penjual_id', null);
+                                        $set('user_id', null);
+                                        $set('pekerja_id', null);
+                                        $set('info_hutang', null);
+                                        $set('jumlah_hutang', 0);
+                                    })
+                                    ->visible(fn(Forms\Get $get) => filled($get('kategori_id'))),
 
-                        // Informasi Hutang
-                        Forms\Components\Placeholder::make('info_hutang')
-                            ->label('Total Hutang Saat Ini')
-                            ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
-                            ->visible(
-                                fn(Forms\Get $get) =>
-                                in_array($get('tipe_nama'), ['penjual', 'pekerja']) &&
-                                    (filled($get('penjual_id')) || filled($get('pekerja_id')))
-                            )
-                            ->extraAttributes([
-                                'class' => 'text-2xl font-bold text-yellow-400',
-                                'style' => 'text-transform: uppercase;'
-                            ])
-                            ->columnSpan('full'),
-                    ])
-                    ->columns(2),
+                                Forms\Components\Select::make('penjual_id')
+                                    ->label('Nama Penjual')
+                                    ->relationship('penjual', 'nama')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('nama')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('alamat')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('telepon')
+                                            ->maxLength(255),
+                                    ])
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        if ($state) {
+                                            $penjual = \App\Models\Penjual::find($state);
+                                            if ($penjual) {
+                                                $set('info_hutang', "Rp " . number_format($penjual->hutang, 0, ',', '.'));
+                                                $set('jumlah_hutang', $penjual->hutang);
+                                            }
+                                        } else {
+                                            $set('info_hutang', null);
+                                            $set('jumlah_hutang', 0);
+                                        }
+                                    })
+                                    ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual'),
 
-                // Section 3: Nominal dan Bukti - Perbaikan kondisi visible
-                Forms\Components\Section::make('Nominal dan Bukti')
-                    ->description('Masukkan nominal dan upload bukti transaksi')
-                    ->schema([
-                        Forms\Components\TextInput::make('nominal')
-                            ->required()
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->live(onBlur: true)
-                            ->currencyMask(
-                                thousandSeparator: '.',
-                                decimalSeparator: ',',
-                                precision: 0,
-                            )
-                            ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
-                                if (
-                                    $get('operasional') === 'pemasukan' &&
-                                    $get('kategori_id') &&
-                                    filled($get('jumlah_hutang'))
-                                ) {
-                                    $nominal = (int) str_replace(['.', ','], ['', '.'], $state);
-                                    $hutang = (int) $get('jumlah_hutang');
+                                Forms\Components\Select::make('pekerja_id')
+                                    ->label('Nama Pekerja')
+                                    ->relationship('pekerja', 'nama')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->createOptionForm([
+                                        Forms\Components\TextInput::make('nama')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('alamat')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('telepon')
+                                            ->maxLength(255),
+                                    ])
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        if ($state) {
+                                            $pekerja = \App\Models\Pekerja::find($state);
+                                            if ($pekerja) {
+                                                $set('info_hutang', "Rp " . number_format($pekerja->hutang, 0, ',', '.'));
+                                                $set('jumlah_hutang', $pekerja->hutang);
+                                            }
+                                        } else {
+                                            $set('info_hutang', null);
+                                            $set('jumlah_hutang', 0);
+                                        }
+                                    })
+                                    ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja'),
 
-                                    if ($nominal > $hutang) {
-                                        $set('nominal', number_format($hutang, 0, ',', '.'));
-                                        Notification::make()
-                                            ->title('Nominal melebihi hutang')
-                                            ->warning()
-                                            ->body("Nominal pembayaran disesuaikan dengan total hutang Rp " . number_format($hutang, 0, ',', '.'))
-                                            ->send();
-                                    }
-                                }
-                            })
-                            ->columnSpan('full')
-                            ->visible(
-                                fn(Forms\Get $get) =>
-                                filled($get('tipe_nama')) &&
-                                    (
-                                        filled($get('penjual_id')) ||
-                                        filled($get('user_id')) ||
-                                        filled($get('pekerja_id'))
+                                Forms\Components\Select::make('user_id')
+                                    ->label('Nama Karyawan')
+                                    ->relationship('user', 'name')
+                                    ->searchable()
+                                    ->preload()
+                                    ->live()
+                                    ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'user'),
+
+                                Forms\Components\Placeholder::make('info_hutang')
+                                    ->label('Total Hutang Saat Ini')
+                                    ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
+                                    ->visible(
+                                        fn(Forms\Get $get) =>
+                                        in_array($get('tipe_nama'), ['penjual', 'pekerja']) &&
+                                            (filled($get('penjual_id')) || filled($get('pekerja_id')))
                                     )
-                            ),
+                                    ->extraAttributes([
+                                        'class' => 'text-2xl font-bold text-yellow-400',
+                                        'style' => 'text-transform: uppercase;'
+                                    ])
+                            ])
+                            ->columns(1),
 
-                        Forms\Components\TextInput::make('keterangan')
-                            ->label('Keterangan')
-                            ->maxLength(255)
-                            ->columnSpan('full'),
+                        Forms\Components\Section::make('Nominal dan Bukti')
+                            ->description('Masukkan nominal dan upload bukti transaksi')
+                            ->schema([
+                                Forms\Components\TextInput::make('nominal')
+                                    ->required()
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->live(onBlur: true)
+                                    ->currencyMask(
+                                        thousandSeparator: '.',
+                                        decimalSeparator: ',',
+                                        precision: 0,
+                                    )
+                                    ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                        if (
+                                            $get('operasional') === 'pemasukan' &&
+                                            $get('kategori_id') &&
+                                            filled($get('jumlah_hutang'))
+                                        ) {
+                                            $nominal = (int) str_replace(['.', ','], ['', '.'], $state);
+                                            $hutang = (int) $get('jumlah_hutang');
 
-                        Forms\Components\FileUpload::make('file_bukti')
-                            ->label('Upload Bukti')
-                            ->directory('bukti-operasional')
-                            ->image()
-                            ->imagePreviewHeight('250')
-                            ->maxSize(2048)
-                            ->columnSpan('full'),
+                                            if ($nominal > $hutang) {
+                                                $set('nominal', number_format($hutang, 0, ',', '.'));
+                                                Notification::make()
+                                                    ->title('Nominal melebihi hutang')
+                                                    ->warning()
+                                                    ->body("Nominal pembayaran disesuaikan dengan total hutang Rp " . number_format($hutang, 0, ',', '.'))
+                                                    ->send();
+                                            }
+                                        }
+                                    })
+                                    ->visible(
+                                        fn(Forms\Get $get) =>
+                                        filled($get('tipe_nama')) &&
+                                            (
+                                                filled($get('penjual_id')) ||
+                                                filled($get('user_id')) ||
+                                                filled($get('pekerja_id'))
+                                            )
+                                    ),
 
-                        Forms\Components\Hidden::make('is_from_transaksi')
-                            ->default(false),
+                                Forms\Components\TextInput::make('keterangan')
+                                    ->label('Keterangan')
+                                    ->maxLength(255),
 
-                        Forms\Components\Hidden::make('jumlah_hutang')
-                            ->default(0),
+                                Forms\Components\FileUpload::make('file_bukti')
+                                    ->label('Upload Bukti')
+                                    ->directory('bukti-operasional')
+                                    ->image()
+                                    ->imagePreviewHeight('250')
+                                    ->maxSize(2048),
+
+                                Forms\Components\Hidden::make('is_from_transaksi')
+                                    ->default(false),
+
+                                Forms\Components\Hidden::make('jumlah_hutang')
+                                    ->default(0),
+                            ])
+                            ->columns(1)
                     ])
-                    ->columns(2),
-            ]);
+                    // ->columnSpan(['lg' => 2])
+                    ->columnSpan('full')
+                    ->extraAttributes([
+                        'class' => 'mx-auto max-w-4xl'
+                    ])
+            ])
+            ->columns(1);
+        // ->columns(['lg' => 3]);
     }
 
 

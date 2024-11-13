@@ -35,7 +35,6 @@ class PenjualFactory extends Factory
             'Umar',
             'Vino',
             'Wahyu',
-            'Xaverius',
             'Yusuf',
             'Zaki'
         ];
@@ -63,38 +62,57 @@ class PenjualFactory extends Factory
             'Nugraha'
         ];
 
-        // Daftar nama daerah untuk alamat
+        // Daftar lengkap daerah di Kecamatan Kamang Baru
         $daerah = [
-            'Timpeh',
-            'Dharmasraya',
-            'Sitiung',
-            'Pulau Punjung',
-            'Koto Baru',
-            'Asam Jujuhan',
-            'Koto Salak',
-            'Padang Laweh',
-            'Tiumang',
-            'Sungai Rumbai',
-            'Ranah Batahan',
-            'Koto Besar',
-            'Sungai Dareh'
+            'Sungai Moran' => [
+                'Jorong I Sungai Moran',
+                'Jorong II Sungai Moran',
+                'Jorong III Sungai Moran'
+            ],
+            'Kampung Surau' => [
+                'Jorong I Kampung Surau',
+                'Jorong II Kampung Surau',
+                'Jorong III Kampung Surau'
+            ],
+            'Muaro Tais' => [
+                'Jorong I Muaro Tais',
+                'Jorong II Muaro Tais',
+                'Jorong III Muaro Tais'
+            ],
+            'Lubuk Karak' => [
+                'Jorong I Lubuk Karak',
+                'Jorong II Lubuk Karak',
+                'Jorong III Lubuk Karak'
+            ],
+            'Kamang' => [
+                'Jorong I Kamang',
+                'Jorong II Kamang',
+                'Jorong III Kamang'
+            ],
+            'Gunung Medan' => [
+                'Jorong I Gunung Medan',
+                'Jorong II Gunung Medan',
+                'Jorong III Gunung Medan'
+            ]
         ];
 
-        // Generate nama lengkap random
-        $nama = $this->faker->randomElement($namaDepan) . ' ' .
-            $this->faker->randomElement($namaBelakang);
+        // Pilih nagari dan jorong secara random
+        $nagari = array_rand($daerah);
+        $jorong = $this->faker->randomElement($daerah[$nagari]);
 
-        // Generate alamat dengan format dan daerah yang relevan
-        $alamat = 'Jorong ' . $this->faker->numberBetween(1, 10) . ' ' .
-            $this->faker->randomElement($daerah);
+        // Generate nama lengkap yang unik dengan menambahkan inisial
+        $nama = $this->faker->randomElement($namaDepan) . ' ' .
+            $this->faker->randomElement($namaBelakang) . ' ' .
+            chr($this->faker->numberBetween(65, 90)); // Tambah inisial A-Z
+
+        // Format alamat dengan detail
+        $alamat = $jorong . ', Nagari ' . $nagari . ', Kec. Kamang Baru';
 
         return [
             'nama' => $nama,
             'alamat' => $alamat,
-            // Format nomor telepon Indonesia
             'telepon' => '08' . $this->faker->numberBetween(1000000000, 9999999999),
-            // Generate hutang random dengan kelipatan 50000
-            'hutang' => $this->faker->numberBetween(0, 100) * 50000,
+            'hutang' => $this->faker->numberBetween(0, 20) * 100000, // Hutang 0-2jt dengan kelipatan 100rb
             'created_at' => now(),
             'updated_at' => now()
         ];

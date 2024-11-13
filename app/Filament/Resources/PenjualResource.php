@@ -17,6 +17,8 @@ use App\Filament\Resources\PenjualResource\RelationManagers;
 use Illuminate\Support\Collection;
 use App\Filament\Resources\PenjualResource\Pages;
 use Filament\Tables\Pagination\Pagination;
+use App\Filament\Resources\PenjualResource\Widgets\PenjualStatsOverview;
+use App\Filament\Resources\PenjualResource\Widgets\PenjualHutangTertinggiWidget;
 
 class PenjualResource extends Resource
 {
@@ -24,6 +26,19 @@ class PenjualResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-users';
     // protected static ?string $navigationGroup = 'Master Data';
     protected static ?int $navigationSort = 5;
+
+
+    public static function getWidgets(): array
+    {
+        return [
+            PenjualStatsOverview::class,
+            PenjualHutangTertinggiWidget::class,
+        ];
+    }
+
+
+
+    //---form----//
 
     public static function form(Form $form): Form
     {
