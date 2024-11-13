@@ -2,9 +2,10 @@
 
 namespace App\Observers;
 
-use App\Models\{TransaksiDo, LaporanKeuangan, Perusahaan, Penjual, RiwayatHutang};
+use Illuminate\Support\Str;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\{DB, Log};
+use App\Models\{TransaksiDo, LaporanKeuangan, Perusahaan, Penjual, RiwayatHutang};
 
 class TransaksiDoObserver
 {
@@ -75,6 +76,9 @@ class TransaksiDoObserver
     {
         try {
             DB::beginTransaction();
+
+            // Memastikan kategori_do tidak melebihi panjang kolom
+            $kategori = Str::limit('pembayaran_hutang', 50); // Sesuaikan dengan panjang kolom
 
             $perusahaan = Perusahaan::first();
             if (!$perusahaan) throw new \Exception("Data perusahaan tidak ditemukan");

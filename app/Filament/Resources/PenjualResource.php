@@ -272,6 +272,8 @@ class PenjualResource extends Resource
                         }
                     }),
             ])
+            ->poll('5s')
+            ->striped()
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
                     ->requiresConfirmation()

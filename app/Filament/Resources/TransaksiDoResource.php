@@ -395,7 +395,6 @@ class TransaksiDoResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->poll('5s')
             ->striped()
-            ->striped()
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
