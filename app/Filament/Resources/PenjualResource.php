@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\PenjualResource\RelationManagers;
 use Illuminate\Support\Collection;
 use App\Filament\Resources\PenjualResource\Pages;
+use Filament\Tables\Pagination\Pagination;
 
 class PenjualResource extends Resource
 {
@@ -98,13 +99,6 @@ class PenjualResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Filter::make('hutang_status')
-                    ->query(function (Builder $query, array $data) {
-                        return $query->when(
-                            $data['value'] === 'dengan_hutang',
-                            fn($q) => $q->hasHutang()
-                        );
-                    }),
 
                 Tables\Filters\SelectFilter::make('hutang_status')
                     ->label('Status Hutang')
@@ -280,10 +274,9 @@ class PenjualResource extends Resource
                         }
                     }),
             ])
-            ->defaultPaginationPageSize(25)
+            ->paginated([10, 25, 50, 100, 'all'])
             ->deferLoading()
             ->poll('30s')
-            ->persistFilters()
             ->persistSortInSession()
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
@@ -307,16 +300,14 @@ class PenjualResource extends Resource
         ];
     }
 
-    //eager loading transaksi stats
+    // eager loading transaksi stats
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->withTransaksiStats()
-            ->when(!auth()->user()->isAdmin(), function ($query) {
-                return $query->whereHas('transaksiDo', function ($q) {
-                    $q->where('created_at', '>=', now()->subMonths(3));
-                });
-            });
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class
+            ]);
+        // ->defaultSort('created_at', 'desc');
     }
 
     public static function getPages(): array

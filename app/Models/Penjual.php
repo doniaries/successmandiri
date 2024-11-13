@@ -24,17 +24,17 @@ class Penjual extends Model
         'hutang' => 'decimal:0',
     ];
 
-    public function riwayatHutang()
+    public function riwayatHutang(): HasMany
     {
         return $this->hasMany(RiwayatHutang::class, 'entitas_id')
             ->where('tipe_entitas', 'penjual')
-            ->select(['id', 'entitas_id', 'nominal', 'jenis', 'created_at'])
             ->latest();
     }
 
     public function riwayatHutangTerbaru()
     {
-        return $this->riwayatHutang()->take(5);
+        return $this->riwayatHutang()
+            ->take(5);
     }
 
     // Custom accessor for formatted hutang
@@ -44,10 +44,9 @@ class Penjual extends Model
     }
 
     // Relationships with optimized queries
-    public function transaksiDo()
+    public function transaksiDo(): HasMany
     {
         return $this->hasMany(TransaksiDo::class)
-            ->select(['id', 'penjual_id', 'nomor', 'tanggal', 'total', 'status_bayar'])
             ->latest();
     }
 

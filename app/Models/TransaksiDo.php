@@ -16,6 +16,14 @@ class TransaksiDo extends Model
     protected $table = 'transaksi_do';
     protected $with = ['penjual']; // Default eager loading
 
+    // // Default eager loading
+    // protected $with = [
+    //     'penjual:id,nama,hutang,alamat,telepon',
+    //     'riwayatHutang'
+    // ];
+
+
+
     protected $fillable = [
         'nomor',
         'tanggal',
@@ -72,10 +80,11 @@ class TransaksiDo extends Model
     ];
 
     // Relationships
-    public function penjual()
+    // Relasi dengan lazy eager loading
+    public function penjual(): BelongsTo
     {
         return $this->belongsTo(Penjual::class)
-            ->select(['id', 'nama', 'hutang', 'alamat', 'telepon']);
+            ->withDefault(['nama' => 'Penjual tidak ditemukan']);
     }
 
     public function laporanKeuangan()
@@ -100,11 +109,11 @@ class TransaksiDo extends Model
         return $this->tonase * $this->harga_satuan;
     }
 
-    public function riwayatHutang()
+    public function riwayatHutang(): HasMany
     {
         return $this->hasMany(RiwayatHutang::class)
             ->latest()
-            ->select(['id', 'transaksi_do_id', 'nominal', 'jenis', 'created_at']);
+            ->take(5);
     }
 
 
@@ -119,12 +128,11 @@ class TransaksiDo extends Model
     }
 
     // Scopes
+    // Scope untuk query tambahan jika diperlukan
     public function scopeWithCompleteData($query)
     {
         return $query->with([
-            'penjual',
-            'riwayatHutang' => fn($q) => $q->latest()->take(5),
-            'laporanKeuangan' => fn($q) => $q->select(['id', 'transaksi_do_id', 'nominal', 'jenis', 'created_at'])
+            'laporanKeuangan' => fn($q) => $q->latest()->take(5)
         ]);
     }
 

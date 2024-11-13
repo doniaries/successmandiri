@@ -80,6 +80,9 @@ class TransaksiDoObserver
             // Memastikan kategori_do tidak melebihi panjang kolom
             $kategori = Str::limit('pembayaran_hutang', 50); // Sesuaikan dengan panjang kolom
 
+            // Clear cache sebelum memproses transaksi
+            CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+
             $perusahaan = Perusahaan::first();
             if (!$perusahaan) throw new \Exception("Data perusahaan tidak ditemukan");
 
@@ -217,6 +220,10 @@ class TransaksiDoObserver
     {
         try {
             DB::beginTransaction();
+
+            // Clear cache setelah delete berhasil
+            CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+
 
             // 1. Simpan data awal untuk log
             $dataPembatalan = [
@@ -426,5 +433,23 @@ class TransaksiDoObserver
             ->body($message)
             ->warning()
             ->send();
+    }
+
+
+    public function updated(TransaksiDo $transaksiDo)
+    {
+        // Clear cache setelah update berhasil
+        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+
+        // Log perubahan
+        Log::info('TransaksiDO Updated:', [
+            'nomor' => $transaksiDo->nomor,
+            'changes' => $transaksiDo->getChanges()
+        ]);
+    }
+    public function restored(TransaksiDo $transaksiDo)
+    {
+        // Clear cache saat data di-restore dari soft delete
+        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
     }
 }

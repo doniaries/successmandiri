@@ -435,8 +435,13 @@ class TransaksiDoResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll('5s')
-            ->striped()
+            ->paginated([
+                'defaultPerPage' => 25,
+                'perPageOptions' => [10, 25, 50, 100]
+            ])
+            ->poll('30s')
+            ->deferLoading()
+            ->persistSortInSession()
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
             ])
@@ -472,20 +477,10 @@ class TransaksiDoResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with([
-                'penjual', // Load relasi penjual
-                'riwayatHutang',
-                'operasional' => function ($query) {
-                    $query->with('kategori'); // Nested eager loading
-                }
-            ])
-            ->withCount([
-                'operasional as total_operasional',
-                'riwayatHutang as total_pembayaran'
-            ])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
 
