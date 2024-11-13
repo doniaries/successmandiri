@@ -139,4 +139,10 @@ class TransaksiWidget extends BaseWidget
     {
         return true;
     }
+
+    public function mount()
+    {
+        $penjual = Penjual::find(1); // Ganti 1 dengan ID yang sesuai
+        $this->paymentHistory = $penjual->paymentHistory; // Panggilan yang benar
+    }
 }

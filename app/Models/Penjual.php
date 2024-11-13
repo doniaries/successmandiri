@@ -71,4 +71,11 @@ class Penjual extends Model
     {
         return $query->where('hutang', '>', 0);
     }
+
+    public function paymentHistory()
+    {
+        return $this->hasMany(TransaksiDo::class, 'penjual_id')
+            ->select('id', 'pembayaran_hutang', 'created_at')
+            ->orderBy('created_at', 'desc');
+    }
 }

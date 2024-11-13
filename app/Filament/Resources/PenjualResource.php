@@ -72,6 +72,17 @@ class PenjualResource extends Resource
                                 decimalSeparator: '.',
                                 precision: 0
                             ),
+                        Forms\Components\Repeater::make('payment_history')
+                            ->label('Riwayat Pembayaran')
+                            ->relationship('paymentHistory')
+                            ->schema([
+                                Forms\Components\TextInput::make('pembayaran_hutang')
+                                    ->label('Pembayaran Hutang')
+                                    ->required(),
+                                Forms\Components\DatePicker::make('created_at')
+                                    ->label('Tanggal Pembayaran')
+                                    ->required(),
+                            ])
                     ])
                     ->columns(2)
             ]);
@@ -172,15 +183,7 @@ class PenjualResource extends Resource
                             $hutangSebelum = $record->hutang;
                             $record->increment('hutang', $nominal);
 
-                            // // Catat di riwayat hutang
-                            // $record->riwayatHutang()->create([
-                            //     'tipe_entitas' => 'penjual',
-                            //     'nominal' => $nominal,
-                            //     'jenis' => 'penambahan',
-                            //     'hutang_sebelum' => $hutangSebelum,
-                            //     'hutang_sesudah' => $record->fresh()->hutang,
-                            //     'keterangan' => $data['keterangan'],
-                            // ]);
+
 
                             DB::commit();
 
@@ -307,20 +310,9 @@ class PenjualResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            // RelationManagers\RiwayatHutangRelationManager::class,
-            RelationManagers\TransaksiDoRelationManager::class,
-        ];
-    }
 
-    // // eager loading transaksi stats
-    // public static function getEloquentQuery(): Builder
-    // {
-    //     return parent::getEloquentQuery()
-    //         ->with(['riwayatHutangTerbaru', 'transaksiDo']);
-    // }
+
+
 
     public static function getPages(): array
     {

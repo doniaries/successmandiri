@@ -154,4 +154,11 @@ class TransaksiDo extends Model
             ]);
         }]);
     }
+
+    public function PaymentHistory()
+    {
+        return $this->hasMany(TransaksiDo::class, 'penjual_id')
+            ->select('id', 'pembayaran_hutang', 'created_at')
+            ->orderBy('created_at', 'desc');
+    }
 }
