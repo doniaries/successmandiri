@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Services\CacheService; // Service untuk manajemen cache
 use Illuminate\Support\Str;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\{DB, Log};
@@ -9,19 +10,32 @@ use App\Models\{TransaksiDo, LaporanKeuangan, Perusahaan, Penjual, RiwayatHutang
 
 class TransaksiDoObserver
 {
+    /**
+     * Handle the TransaksiDo "creating" event.
+     */
     public function creating(TransaksiDo $transaksiDo)
     {
         try {
             // 1. Validasi data wajib
-            if (!$transaksiDo->tanggal) throw new \Exception("Tanggal wajib diisi");
-            if (!$transaksiDo->penjual_id) throw new \Exception("Penjual wajib dipilih");
-            if ($transaksiDo->tonase <= 0) throw new \Exception("Tonase harus lebih dari 0");
-            if ($transaksiDo->harga_satuan <= 0) throw new \Exception("Harga satuan harus lebih dari 0");
+            if (!$transaksiDo->tanggal) {
+                throw new \Exception("Tanggal wajib diisi");
+            }
+            if (!$transaksiDo->penjual_id) {
+                throw new \Exception("Penjual wajib dipilih");
+            }
+            if ($transaksiDo->tonase <= 0) {
+                throw new \Exception("Tonase harus lebih dari 0");
+            }
+            if ($transaksiDo->harga_satuan <= 0) {
+                throw new \Exception("Harga satuan harus lebih dari 0");
+            }
 
             // 2. Simpan dan validasi hutang
             if ($transaksiDo->penjual_id) {
                 $penjual = Penjual::find($transaksiDo->penjual_id);
-                if (!$penjual) throw new \Exception("Penjual tidak ditemukan");
+                if (!$penjual) {
+                    throw new \Exception("Penjual tidak ditemukan");
+                }
 
                 $transaksiDo->hutang_awal = $penjual->hutang ?? 0;
 
@@ -43,7 +57,9 @@ class TransaksiDoObserver
 
             // 4. Validasi saldo perusahaan
             $perusahaan = Perusahaan::first();
-            if (!$perusahaan) throw new \Exception("Data perusahaan tidak ditemukan");
+            if (!$perusahaan) {
+                throw new \Exception("Data perusahaan tidak ditemukan");
+            }
 
             if ($transaksiDo->sisa_bayar > $perusahaan->saldo) {
                 throw new \Exception(
@@ -53,15 +69,9 @@ class TransaksiDoObserver
                 );
             }
 
-            $perusahaan = Perusahaan::where('is_active', true)->first();
-            if (!$perusahaan) {
-                Log::error('Data perusahaan tidak ditemukan atau tidak aktif');
-                throw new \Exception("Data perusahaan tidak valid. Hubungi administrator.");
-            }
-
             Log::info('Data DO Siap Disimpan:', [
                 'nomor' => $transaksiDo->nomor,
-                'penjual' => $penjual->nama,
+                'penjual' => $penjual->nama ?? null,
                 'total' => $transaksiDo->total,
                 'pemasukan' => $totalPemasukan,
                 'sisa_bayar' => $transaksiDo->sisa_bayar,
@@ -78,19 +88,21 @@ class TransaksiDoObserver
         }
     }
 
+    /**
+     * Handle the TransaksiDo "created" event.
+     */
     public function created(TransaksiDo $transaksiDo)
     {
         try {
             DB::beginTransaction();
 
-            // Memastikan kategori_do tidak melebihi panjang kolom
-            $kategori = Str::limit('pembayaran_hutang', 50); // Sesuaikan dengan panjang kolom
-
-            // Clear cache sebelum memproses transaksi
+            // Clear cache menggunakan CacheService
             CacheService::clearTransaksiCache($transaksiDo->penjual_id);
 
             $perusahaan = Perusahaan::first();
-            if (!$perusahaan) throw new \Exception("Data perusahaan tidak ditemukan");
+            if (!$perusahaan) {
+                throw new \Exception("Data perusahaan tidak ditemukan");
+            }
 
             $saldoBerjalan = $perusahaan->saldo;
 
@@ -108,7 +120,7 @@ class TransaksiDoObserver
 
             foreach ($komponenPemasukan as $kategori => $data) {
                 if ($data['nominal'] > 0) {
-                    // Catat laporan keuangan
+                    // Catat laporan keuangan untuk pemasukan
                     $laporan = $this->createLaporanKeuangan([
                         'tanggal' => $transaksiDo->tanggal,
                         'jenis' => 'masuk',
@@ -129,7 +141,7 @@ class TransaksiDoObserver
 
                     Log::info("Pemasukan {$kategori} tercatat:", [
                         'nominal' => $data['nominal'],
-                        'laporan_id' => $laporan->id
+                        'laporan_id' => $laporan->id ?? null
                     ]);
                 }
             }
@@ -172,7 +184,7 @@ class TransaksiDoObserver
 
                 Log::info('Pembayaran Hutang tercatat:', [
                     'nominal' => $transaksiDo->pembayaran_hutang,
-                    'laporan_id' => $laporan->id,
+                    'laporan_id' => $laporan->id ?? null,
                     'riwayat_id' => $riwayat->id
                 ]);
             }
@@ -199,7 +211,7 @@ class TransaksiDoObserver
 
                 Log::info('Pembayaran Sisa DO tercatat:', [
                     'nominal' => $transaksiDo->sisa_bayar,
-                    'laporan_id' => $laporan->id
+                    'laporan_id' => $laporan->id ?? null
                 ]);
             }
 
@@ -222,14 +234,43 @@ class TransaksiDoObserver
         }
     }
 
+    /**
+     * Handle the TransaksiDo "updating" event.
+     */
+    public function updating(TransaksiDo $transaksiDo)
+    {
+        // Validasi sebelum update jika diperlukan
+        if ($transaksiDo->isDirty('pembayaran_hutang')) {
+            if ($transaksiDo->pembayaran_hutang > $transaksiDo->hutang_awal) {
+                throw new \Exception("Pembayaran hutang tidak boleh melebihi hutang awal");
+            }
+        }
+    }
+
+    /**
+     * Handle the TransaksiDo "updated" event.
+     */
+    public function updated(TransaksiDo $transaksiDo)
+    {
+        // Clear cache menggunakan CacheService
+        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+
+        Log::info('TransaksiDO Updated:', [
+            'nomor' => $transaksiDo->nomor,
+            'changes' => $transaksiDo->getChanges()
+        ]);
+    }
+
+    /**
+     * Handle the TransaksiDo "deleted" event.
+     */
     public function deleted(TransaksiDo $transaksiDo)
     {
         try {
             DB::beginTransaction();
 
-            // Clear cache setelah delete berhasil
+            // Clear cache menggunakan CacheService
             CacheService::clearTransaksiCache($transaksiDo->penjual_id);
-
 
             // 1. Simpan data awal untuk log
             $dataPembatalan = [
@@ -296,7 +337,6 @@ class TransaksiDoObserver
             Log::info('TransaksiDO Berhasil Dibatalkan:', $dataPembatalan);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('Error Pembatalan TransaksiDO:', [
                 'error' => $e->getMessage(),
                 'data' => [
@@ -308,7 +348,28 @@ class TransaksiDoObserver
         }
     }
 
-    private function createLaporanKeuangan(array $data): LaporanKeuangan
+    /**
+     * Handle the TransaksiDo "restored" event.
+     */
+    public function restored(TransaksiDo $transaksiDo)
+    {
+        // Clear cache menggunakan CacheService
+        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+    }
+
+    /**
+     * Handle the TransaksiDo "force deleted" event.
+     */
+    public function forceDeleted(TransaksiDo $transaksiDo)
+    {
+        // Clear cache menggunakan CacheService
+        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+    }
+
+    /**
+     * Create laporan keuangan dengan validasi duplikasi
+     */
+    private function createLaporanKeuangan(array $data): ?LaporanKeuangan
     {
         try {
             // Validasi data wajib
@@ -366,6 +427,9 @@ class TransaksiDoObserver
         }
     }
 
+    /**
+     * Check duplikasi transaksi
+     */
     private function checkDuplikasiTransaksi(int $transaksiDoId, ?string $kategori, float $nominal): bool
     {
         $query = LaporanKeuangan::where('transaksi_do_id', $transaksiDoId)
@@ -378,12 +442,53 @@ class TransaksiDoObserver
         return $query->exists();
     }
 
+    /**
+     * Send notification berhasil
+     */
     private function sendSuccessNotification(TransaksiDo $transaksiDo): void
     {
         $totalPemasukan = $transaksiDo->upah_bongkar + $transaksiDo->biaya_lain + $transaksiDo->pembayaran_hutang;
         $totalPengeluaran = $transaksiDo->sisa_bayar;
         $selisih = $totalPemasukan - $totalPengeluaran;
 
+        $message = $this->buildNotificationMessage($transaksiDo, $totalPemasukan, $totalPengeluaran, $selisih);
+
+        Notification::make()
+            ->title('Transaksi DO Berhasil')
+            ->body($message)
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Send notification hapus/batal
+     */
+    private function sendDeleteNotification(TransaksiDo $transaksiDo): void
+    {
+        $message = "DO #{$transaksiDo->nomor} telah dibatalkan\n\n";
+
+        if ($transaksiDo->pembayaran_hutang > 0) {
+            $message .= "Info Hutang:\n";
+            $message .= "- Hutang dikembalikan: Rp " . number_format($transaksiDo->pembayaran_hutang, 0, ',', '.') . "\n";
+            if ($transaksiDo->penjual) {
+                $message .= "- Hutang terkini: Rp " . number_format($transaksiDo->penjual->hutang, 0, ',', '.') . "\n";
+            }
+        }
+
+        $message .= "\nSemua transaksi keuangan terkait telah dibatalkan dan saldo dikembalikan.";
+
+        Notification::make()
+            ->title('Transaksi DO Dibatalkan')
+            ->body($message)
+            ->warning()
+            ->send();
+    }
+
+    /**
+     * Build notification message
+     */
+    private function buildNotificationMessage(TransaksiDo $transaksiDo, $totalPemasukan, $totalPengeluaran, $selisih): string
+    {
         $message = "DO #{$transaksiDo->nomor}\n\n";
         $message .= "Detail Transaksi:\n";
         $message .= "- Tonase: " . number_format($transaksiDo->tonase, 0, ',', '.') . " Kg\n";
@@ -413,49 +518,6 @@ class TransaksiDoObserver
             $message .= "- Sisa Hutang: Rp " . number_format($transaksiDo->sisa_hutang_penjual, 0, ',', '.');
         }
 
-        Notification::make()
-            ->title('Transaksi DO Berhasil')
-            ->body($message)
-            ->success()
-            ->send();
-    }
-
-    private function sendDeleteNotification(TransaksiDo $transaksiDo): void
-    {
-        $message = "DO #{$transaksiDo->nomor} telah dibatalkan\n\n";
-
-        if ($transaksiDo->pembayaran_hutang > 0) {
-            $message .= "Info Hutang:\n";
-            $message .= "- Hutang dikembalikan: Rp " . number_format($transaksiDo->pembayaran_hutang, 0, ',', '.') . "\n";
-            if ($transaksiDo->penjual) {
-                $message .= "- Hutang terkini: Rp " . number_format($transaksiDo->penjual->hutang, 0, ',', '.') . "\n";
-            }
-        }
-
-        $message .= "\nSemua transaksi keuangan terkait telah dibatalkan dan saldo dikembalikan.";
-
-        Notification::make()
-            ->title('Transaksi DO Dibatalkan')
-            ->body($message)
-            ->warning()
-            ->send();
-    }
-
-
-    public function updated(TransaksiDo $transaksiDo)
-    {
-        // Clear cache setelah update berhasil
-        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
-
-        // Log perubahan
-        Log::info('TransaksiDO Updated:', [
-            'nomor' => $transaksiDo->nomor,
-            'changes' => $transaksiDo->getChanges()
-        ]);
-    }
-    public function restored(TransaksiDo $transaksiDo)
-    {
-        // Clear cache saat data di-restore dari soft delete
-        CacheService::clearTransaksiCache($transaksiDo->penjual_id);
+        return $message;
     }
 }
