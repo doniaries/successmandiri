@@ -80,7 +80,7 @@ class TransaksiDoStatWidget extends BaseWidget
 
                 return [
                     Stat::make('Saldo Saat Ini', 'Rp ' . number_format($perusahaan->saldo, 0, ',', '.'))
-                        ->description('Update otomatis setiap 15 detik')
+                        ->description('Update otomatis setiap 5 detik')
                         ->descriptionIcon('heroicon-m-arrow-path')
                         ->color('success'),
 

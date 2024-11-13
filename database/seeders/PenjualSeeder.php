@@ -9,28 +9,28 @@ class PenjualSeeder extends Seeder
 {
     public function run(): void
     {
-        $penjuals = [
+
+        // Buat 300 data penjual
+        Penjual::factory()->count(300)->create();
+
+        // Tambah beberapa data penjual tetap (opsional)
+        $penjualTetap = [
             [
                 'nama' => 'Budi Satriadi',
-                'alamat' => 'Timpeh 7 ',
+                'alamat' => 'Timpeh 7',
                 'telepon' => '081345678901',
                 'hutang' => 500000
             ],
             [
                 'nama' => 'Dudung Gunawan',
-                'alamat' => 'Jl. Distributor No. 2',
+                'alamat' => 'Sitiung 2',
                 'telepon' => '081345678902',
                 'hutang' => 2000000
             ],
-            [
-                'nama' => 'Wahyudi Putra',
-                'alamat' => 'Jl. Mitra No. 3',
-                'telepon' => '081345678903',
-                'hutang' => 10000000
-            ],
+            // Tambahkan data tetap lainnya jika diperlukan
         ];
 
-        foreach ($penjuals as $penjual) {
+        foreach ($penjualTetap as $penjual) {
             Penjual::create($penjual);
         }
     }
