@@ -247,7 +247,8 @@ class TransaksiDoResource extends Resource
                                 ->disabled()
                                 ->dehydrated(),
 
-                            Forms\Components\TextInput::make('sisa_bayar')-- > prefix('Rp')
+                            Forms\Components\TextInput::make('sisa_bayar')
+                                ->prefix('Rp')
                                 ->currencyMask(
                                     thousandSeparator: ',',
                                     decimalSeparator: '.',
