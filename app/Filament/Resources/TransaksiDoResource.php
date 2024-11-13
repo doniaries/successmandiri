@@ -107,6 +107,11 @@ class TransaksiDoResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->suffix('Kg')
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                     if ($state && $get('harga_satuan')) {
@@ -120,7 +125,11 @@ class TransaksiDoResource extends Resource
                                 ->label('Harga Satuan')
                                 ->required()
                                 ->prefix('Rp')
-                                ->numeric()
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                     if ($state && $get('tonase')) {
@@ -133,8 +142,14 @@ class TransaksiDoResource extends Resource
                             Forms\Components\TextInput::make('total')
                                 ->label('Sub Total')
                                 ->prefix('Rp')
+                                ->default(0)
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->disabled()
-                                ->dehydrated(),
+                                ->dehydrated()
                         ])
                         ->columns(3),
 
@@ -144,7 +159,11 @@ class TransaksiDoResource extends Resource
                             Forms\Components\TextInput::make('upah_bongkar')
                                 ->label('Upah Bongkar')
                                 ->prefix('Rp')
-                                ->numeric()
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->default(0)
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
@@ -153,7 +172,11 @@ class TransaksiDoResource extends Resource
                             Forms\Components\TextInput::make('biaya_lain')
                                 ->label('Biaya Lain')
                                 ->prefix('Rp')
-                                ->numeric()
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->default(0)
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
@@ -163,6 +186,11 @@ class TransaksiDoResource extends Resource
                             Forms\Components\TextInput::make('hutang_awal')
                                 ->label('Hutang Awal')
                                 ->prefix('Rp')
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->disabled()
                                 ->dehydrated(),
 
@@ -180,7 +208,11 @@ class TransaksiDoResource extends Resource
                             Forms\Components\TextInput::make('pembayaran_hutang')
                                 ->label('Pembayaran Hutang')
                                 ->prefix('Rp')
-                                ->numeric()
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->default(0)
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
@@ -207,12 +239,20 @@ class TransaksiDoResource extends Resource
                             Forms\Components\TextInput::make('sisa_hutang_penjual')
                                 ->label('Sisa Hutang')
                                 ->prefix('Rp')
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->disabled()
                                 ->dehydrated(),
 
-                            Forms\Components\TextInput::make('sisa_bayar')
-                                ->label('Sisa Bayar')
-                                ->prefix('Rp')
+                            Forms\Components\TextInput::make('sisa_bayar')-- > prefix('Rp')
+                                ->currencyMask(
+                                    thousandSeparator: ',',
+                                    decimalSeparator: '.',
+                                    precision: 0
+                                )
                                 ->disabled()
                                 ->dehydrated(),
                         ])
