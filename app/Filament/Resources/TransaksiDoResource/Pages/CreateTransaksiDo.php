@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TransaksiDoResource\Pages;
 
 use App\Filament\Resources\TransaksiDoResource;
-use App\Models\{Penjual, RiwayatHutang};
+use App\Models\{Penjual};
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;

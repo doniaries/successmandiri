@@ -8,6 +8,7 @@ use App\Models\Penjual;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Models\TransaksiDo;
+use Carbon\Carbon;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Actions\Action;
@@ -66,9 +67,8 @@ class TransaksiDoResource extends Resource
                             Forms\Components\DateTimePicker::make('tanggal')
                                 ->label('Tanggal')
                                 ->timezone('Asia/Jakarta')
-                                ->displayFormat('d/m/Y H:i')
-                                ->default(now())
-                                ->disabled()
+                                ->displayFormat('d/m/Y') // Format tampilan hanya tanggal
+                                ->default(Carbon::now()) // Menggunakan Carbon untuk nilai default
                                 ->required()
                                 ->dehydrated(),
 

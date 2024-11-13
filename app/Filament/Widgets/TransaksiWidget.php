@@ -16,16 +16,9 @@ class TransaksiWidget extends BaseWidget
 
     protected function getStats(): array
     {
-
-
-
         // Hitung total sawit bulan ini
         $totalSawitBulanIni = TransaksiDo::whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
-            ->sum('tonase');
-
-        // Hitung total sawit hari ini
-        $totalSawitHariIni = TransaksiDo::whereDate('created_at', Carbon::today())
             ->sum('tonase');
 
         // Hitung total transaksi bulan ini
@@ -87,18 +80,18 @@ class TransaksiWidget extends BaseWidget
                 ->extraAttributes([
                     'class' => 'cursor-pointer transition-all hover:scale-105 hover:shadow-lg rounded-lg',
                     'style' => 'transition-duration: 500ms;'
-
                 ])
                 ->color('success'),
 
-            // Stat::make('Total Sawit Masuk Hari Ini', number_format($totalSawitHariIni, 0, ',', '.') . ' Kg')
-            //     ->description('Tanggal ' . Carbon::today()->format('d F Y'))
-            //     ->descriptionIcon('heroicon-m-scale')
-            //     ->chart($chartData)
-            //     ->chartColor('success')
-            //     ->extraAttributes([
-            //         'class' => 'cursor-pointer transition-all hover:scale-105',
-            //     ]),
+            Stat::make('Total Sawit Masuk Hari Ini', number_format(TransaksiDo::whereDate('created_at', Carbon::today())->sum('tonase'), 0, ',', '.') . ' Kg')
+                ->description('Tanggal ' . Carbon::today()->format('d F Y'))
+                ->descriptionIcon('heroicon-m-scale')
+                ->chart($chartData)
+                ->chartColor('success')
+                ->extraAttributes([
+                    'class' => 'cursor-pointer transition-all hover:scale-105',
+                ])
+                ->color('success'),
         ];
     }
 

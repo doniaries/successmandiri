@@ -108,12 +108,12 @@ class TransaksiDo extends Model
         return $this->tonase * $this->harga_satuan;
     }
 
-    public function riwayatHutang(): HasMany
-    {
-        return $this->hasMany(RiwayatHutang::class)
-            ->latest()
-            ->take(5);
-    }
+    // public function riwayatHutang(): HasMany
+    // {
+    //     return $this->hasMany(RiwayatHutang::class)
+    //         ->latest()
+    //         ->take(5);
+    // }
 
 
     public function hitungSisaBayar(): int  // Dari private menjadi public

@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\TransaksiDoResource\Pages;
 
 use App\Filament\Resources\TransaksiDoResource;
-use App\Models\{Penjual, RiwayatHutang};
+use App\Models\Penjual;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
@@ -96,18 +96,6 @@ class EditTransaksiDo extends EditRecord
                 $newPayment = $record->pembayaran_hutang;
 
                 if ($oldPayment != $newPayment) {
-                    // Catat riwayat perubahan hutang
-                    RiwayatHutang::create([
-                        'tipe_entitas' => 'penjual',
-                        'entitas_id' => $record->penjual_id,
-                        'nominal' => $newPayment - $oldPayment,
-                        'jenis' => $newPayment > $oldPayment ? 'pengurangan' : 'penambahan',
-                        'hutang_sebelum' => $record->hutang_awal,
-                        'hutang_sesudah' => $record->sisa_hutang_penjual,
-                        'keterangan' => "Perubahan pembayaran hutang DO #{$record->nomor}",
-                        'transaksi_do_id' => $record->id
-                    ]);
-
                     // Update hutang penjual
                     $penjual = $record->penjual;
                     if ($penjual) {
@@ -161,18 +149,6 @@ class EditTransaksiDo extends EditRecord
                         if ($penjual) {
                             // Kembalikan hutang
                             $penjual->increment('hutang', $this->record->pembayaran_hutang);
-
-                            // Catat di riwayat
-                            RiwayatHutang::create([
-                                'tipe_entitas' => 'penjual',
-                                'entitas_id' => $penjual->id,
-                                'nominal' => $this->record->pembayaran_hutang,
-                                'jenis' => 'penambahan',
-                                'hutang_sebelum' => $penjual->hutang - $this->record->pembayaran_hutang,
-                                'hutang_sesudah' => $penjual->hutang,
-                                'keterangan' => "Pembatalan DO #{$this->record->nomor}",
-                                'transaksi_do_id' => $this->record->id
-                            ]);
                         }
                     }
                 }),

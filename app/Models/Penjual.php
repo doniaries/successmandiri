@@ -11,8 +11,6 @@ class Penjual extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $with = ['riwayatHutangTerbaru']; // Eager load riwayat hutang terbaru
-
     protected $fillable = [
         'nama',
         'alamat',
@@ -23,19 +21,6 @@ class Penjual extends Model
     protected $casts = [
         'hutang' => 'decimal:0',
     ];
-
-    public function riwayatHutang(): HasMany
-    {
-        return $this->hasMany(RiwayatHutang::class, 'entitas_id')
-            ->where('tipe_entitas', 'penjual')
-            ->latest();
-    }
-
-    public function riwayatHutangTerbaru()
-    {
-        return $this->riwayatHutang()
-            ->take(5);
-    }
 
     // Custom accessor for formatted hutang
     public function getFormattedHutangAttribute()
@@ -79,8 +64,7 @@ class Penjual extends Model
     public function scopeWithTransaksiStats($query)
     {
         return $query->withCount('transaksiDo')
-            ->withSum('transaksiDo', 'total')
-            ->withSum('riwayatHutang', 'nominal');
+            ->withSum('transaksiDo', 'total');
     }
 
     public function scopeHasHutang($query)

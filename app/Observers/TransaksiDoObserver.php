@@ -6,7 +6,7 @@ use App\Services\CacheService; // Service untuk manajemen cache
 use Illuminate\Support\Str;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\{DB, Log};
-use App\Models\{TransaksiDo, LaporanKeuangan, Perusahaan, Penjual, RiwayatHutang};
+use App\Models\{TransaksiDo, LaporanKeuangan, Perusahaan, Penjual};
 
 class TransaksiDoObserver
 {
@@ -285,23 +285,23 @@ class TransaksiDoObserver
                 $transaksiDo->penjual->increment('hutang', $transaksiDo->pembayaran_hutang);
                 $hutangSesudah = $transaksiDo->penjual->fresh()->hutang;
 
-                // Catat di riwayat hutang
-                $riwayat = RiwayatHutang::create([
-                    'tipe_entitas' => 'penjual',
-                    'entitas_id' => $transaksiDo->penjual_id,
-                    'nominal' => $transaksiDo->pembayaran_hutang,
-                    'jenis' => 'penambahan',
-                    'hutang_sebelum' => $hutangSebelum,
-                    'hutang_sesudah' => $hutangSesudah,
-                    'keterangan' => "Pembatalan DO #{$transaksiDo->nomor}",
-                    'transaksi_do_id' => $transaksiDo->id
-                ]);
+                // // Catat di riwayat hutang
+                // $riwayat = RiwayatHutang::create([
+                //     'tipe_entitas' => 'penjual',
+                //     'entitas_id' => $transaksiDo->penjual_id,
+                //     'nominal' => $transaksiDo->pembayaran_hutang,
+                //     'jenis' => 'penambahan',
+                //     'hutang_sebelum' => $hutangSebelum,
+                //     'hutang_sesudah' => $hutangSesudah,
+                //     'keterangan' => "Pembatalan DO #{$transaksiDo->nomor}",
+                //     'transaksi_do_id' => $transaksiDo->id
+                // ]);
 
-                $dataPembatalan['riwayat_hutang'] = [
-                    'id' => $riwayat->id,
-                    'hutang_sebelum' => $hutangSebelum,
-                    'hutang_sesudah' => $hutangSesudah
-                ];
+                // $dataPembatalan['riwayat_hutang'] = [
+                //     'id' => $riwayat->id,
+                //     'hutang_sebelum' => $hutangSebelum,
+                //     'hutang_sesudah' => $hutangSesudah
+                // ];
             }
 
             // 3. Proses pembatalan laporan keuangan
@@ -325,6 +325,9 @@ class TransaksiDoObserver
                     'saldo_sesudah' => $perusahaan->fresh()->saldo
                 ];
             }
+
+            // // Hapus riwayat hutang yang terkait dengan transaksi DO ini
+            // RiwayatHutang::where('transaksi_do_id', $transaksiDo->id)->delete();
 
             // 4. Hapus laporan
             LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->delete();

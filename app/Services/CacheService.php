@@ -58,9 +58,9 @@ class CacheService
                 'transaksiDo' => function ($q) {
                     $q->latest()->take(5);
                 },
-                'riwayatHutang' => function ($q) {
-                    $q->latest()->take(5);
-                }
+                // 'riwayatHutang' => function ($q) {
+                //     $q->latest()->take(5);
+                // }
             ])
                 ->withCount('transaksiDo')
                 ->withSum('transaksiDo', 'total')
