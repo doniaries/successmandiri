@@ -198,6 +198,10 @@ class TransaksiDoResource extends Resource
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
 
+                                    Forms\Components\TextInput::make('keterangan_biaya_lain')
+                                        ->label('Keterangan Biaya Lain')
+                                        ->placeholder('uang jalan + ...'),
+
                                     Forms\Components\TextInput::make('pembayaran_hutang')
                                         ->label('Bayar Hutang')
                                         ->currencyMask(
@@ -395,6 +399,8 @@ class TransaksiDoResource extends Resource
                     ->label('Biaya Lain')
                     ->money('IDR'),
 
+                Tables\Columns\TextColumn::make('keterangan_biaya_lain')
+                    ->label('Keterangan Biaya Lain'),
 
                 Tables\Columns\TextColumn::make('hutang_awal')
                     ->label('Hutang')

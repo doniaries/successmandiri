@@ -14,6 +14,9 @@ use Filament\Notifications\Notification;
 use Filament\Support\Colors\Color;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 class LaporanKeuanganResource extends Resource
 {
@@ -224,6 +227,7 @@ class LaporanKeuanganResource extends Resource
                     }),
             ])
             ->actions([
+
                 Tables\Actions\ViewAction::make()
                     ->afterFormFilled(function (Model $record) {
                         Notification::make()
@@ -248,6 +252,59 @@ class LaporanKeuanganResource extends Resource
                             ->title('Data Berhasil Diperbarui')
                             ->success()
                             ->send();
+                    }),
+                Tables\Actions\Action::make('downloadHarian')
+                    ->label('Download Laporan Harian')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\DatePicker::make('tanggal')
+                            ->label('Pilih Tanggal')
+                            ->default(now())
+                            ->required()
+                            ->maxDate(now())
+                            ->displayFormat('d/m/Y')
+                    ])
+                    ->action(function (array $data) {
+                        $tanggal = Carbon::parse($data['tanggal'])->startOfDay();
+
+                        // Ambil data perusahaan
+                        $perusahaan = \App\Models\Perusahaan::where('is_active', true)->first();
+
+                        // Ambil transaksi harian
+                        $transaksi = DB::table('laporan_keuangan')
+                            ->whereDate('tanggal', $tanggal)
+                            ->orderBy('tanggal', 'asc')
+                            ->get();
+
+                        if ($transaksi->isEmpty()) {
+                            Notification::make()
+                                ->warning()
+                                ->title('Tidak ada data')
+                                ->body('Tidak ada transaksi pada tanggal tersebut')
+                                ->send();
+
+                            return;
+                        }
+
+                        // Format data untuk view
+                        $data = [
+                            'perusahaan' => $perusahaan,
+                            'tanggal' => $tanggal->format('d/m/Y'),
+                            'transaksi' => $transaksi,
+                            'total' => [
+                                'pemasukan' => $transaksi->where('jenis', 'masuk')->sum('nominal'),
+                                'pengeluaran' => $transaksi->where('jenis', 'keluar')->sum('nominal'),
+                                'saldo_akhir' => $perusahaan->saldo
+                            ]
+                        ];
+
+                        // Generate PDF
+                        $pdf = Pdf::loadView('laporan.keuangan-harian', $data);
+
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->output();
+                        }, "laporan-keuangan-{$tanggal->format('Y-m-d')}.pdf");
                     })
             ])
             ->poll('5s')

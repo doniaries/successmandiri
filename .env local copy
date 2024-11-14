@@ -1,8 +1,8 @@
 APP_NAME="Success"
-APP_ENV=production
-APP_KEY=
+APP_ENV=local
+APP_KEY=base64:iNxtzui5/mXrumQ1nmISo1hWfmIGP3B8TUN2xZiHGiw=
 APP_DEBUG=true
-APP_TIMEZONE=UTC
+APP_TIMEZONE=Asia/Jakarta
 # ASSET_URL=http://127.0.0.1:8000
 APP_URL=http://127.0.0.1:8000
 
