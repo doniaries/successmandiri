@@ -29,7 +29,9 @@ class LaporanKeuangan extends Model
         'operasional_id',
         'created_by',
         'nomor_transaksi',
-        'nama_penjual'
+        'nama_penjual',
+        'mempengaruhi_kas',
+        'cara_pembayaran',
     ];
 
     protected $casts = [
@@ -37,6 +39,7 @@ class LaporanKeuangan extends Model
         'nominal' => 'decimal:0',
         'saldo_sebelum' => 'decimal:0',
         'saldo_sesudah' => 'decimal:0',
+        'mempengaruhi_kas' => 'boolean'
     ];
 
     // Relationships

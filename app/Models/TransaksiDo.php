@@ -79,6 +79,12 @@ class TransaksiDo extends Model
         'status_bayar' => 'Belum Lunas',
     ];
 
+    const CARA_BAYAR = [
+        'Tunai' => 'Tunai',           // Mempengaruhi saldo kas
+        'Transfer' => 'Transfer',      // Tidak mempengaruhi saldo kas
+        'Cair di Luar' => 'Cair di Luar'  // Tidak mempengaruhi saldo kas
+    ];
+
     // Relationships
     // Relasi dengan lazy eager loading
     public function penjual(): BelongsTo

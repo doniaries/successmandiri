@@ -263,10 +263,12 @@ class LaporanKeuanganResource extends Resource
                             ->default(now())
                             ->required()
                             ->maxDate(now())
-                            ->displayFormat('d/m/Y')
+                            ->format('d/m/Y') // Format tampilan date picker
+                            ->displayFormat('d/m/Y') // Format tampilan setelah dipilih
                     ])
                     ->action(function (array $data) {
-                        $tanggal = Carbon::parse($data['tanggal'])->startOfDay();
+                        // Parse tanggal dari format d/m/Y ke objek Carbon
+                        $tanggal = Carbon::createFromFormat('d/m/Y', $data['tanggal'])->startOfDay();
 
                         // Ambil data perusahaan
                         $perusahaan = \App\Models\Perusahaan::where('is_active', true)->first();
