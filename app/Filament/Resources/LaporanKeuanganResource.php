@@ -241,7 +241,7 @@ class LaporanKeuanganResource extends Resource
             ->emptyStateHeading('Belum ada laporan keuangan')
             ->emptyStateDescription('Laporan keuangan akan terisi otomatis saat ada transaksi DO atau operasional')
             ->emptyStateIcon('heroicon-o-banknotes')
-            ->poll('60s') // Auto refresh setiap 60 detik
+            // ->poll('15s') // Auto refresh setiap 15 detik
             ->modifyQueryUsing(fn(Builder $query) => $query->latest())
             ->headerActions([
                 Tables\Actions\Action::make('refresh')
@@ -309,7 +309,7 @@ class LaporanKeuanganResource extends Resource
                         }, "laporan-keuangan-{$tanggal->format('Y-m-d')}.pdf");
                     })
             ])
-            ->poll('5s')
+            ->poll('10s')
             ->striped();
     }
 

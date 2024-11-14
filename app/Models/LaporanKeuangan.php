@@ -73,4 +73,9 @@ class LaporanKeuangan extends Model
     {
         return $query->where('jenis', 'keluar');
     }
+
+    public function scopeMempengaruhiKas($query)
+    {
+        return $query->where('mempengaruhi_kas', true);
+    }
 }

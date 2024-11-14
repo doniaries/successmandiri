@@ -182,6 +182,8 @@ class TransaksiDoResource extends Resource
                                 ->schema([
                                     Forms\Components\TextInput::make('upah_bongkar')
                                         ->label('Upah Bongkar')
+                                        ->hint('*jika ada')
+                                        ->hintColor('primary')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->prefix('Rp')
                                         ->default(0)
@@ -191,6 +193,8 @@ class TransaksiDoResource extends Resource
 
                                     Forms\Components\TextInput::make('biaya_lain')
                                         ->label('Biaya Lain')
+                                        ->hint('*jika ada')
+                                        ->hintColor('primary')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->prefix('Rp')
                                         ->default(0)
@@ -253,16 +257,20 @@ class TransaksiDoResource extends Resource
                                         ->required(),
                                     Forms\Components\Select::make('cara_bayar')
                                         ->label('Cara Bayar')
-                                        ->options([
-                                            'Tunai' => 'Tunai',
-                                            'Transfer' => 'Transfer',
-                                            'Cair di Luar' => 'Cair di Luar',
-                                        ])
+                                        ->options(TransaksiDo::CARA_BAYAR)
                                         ->default('Tunai')
-                                        ->required(),
+                                        ->required()
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                            if ($state !== 'Tunai') {
+                                                // Reset validasi saldo untuk non-tunai
+                                                $set('_tmp_bypass_saldo_check', true);
+                                            }
+                                        }),
 
                                     Forms\Components\TextInput::make('catatan')
                                         ->label('Catatan'),
+
                                     Forms\Components\FileUpload::make('file_do')
                                         ->label('Upload File DO')
                                         ->directory('do-files')

@@ -51,13 +51,13 @@ class ListTransaksiDos extends ListRecords
                 ->badge(fn() => $this->getModel()::count())
                 ->badgeColor('primary'),
 
-            'tunai' => Tab::make('Pembayaran Tunai')
+            'tunai' => Tab::make('Tunai')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('cara_bayar', 'Tunai'))
                 ->icon('heroicon-o-banknotes')
                 ->badge(fn() => $this->getModel()::where('cara_bayar', 'Tunai')->count())
                 ->badgeColor('success'),
 
-            'transfer' => Tab::make('Pembayaran Transfer')
+            'transfer' => Tab::make('Transfer')
                 ->modifyQueryUsing(fn(Builder $query) => $query->where('cara_bayar', 'Transfer'))
                 ->icon('heroicon-o-credit-card')
                 ->badge(fn() => $this->getModel()::where('cara_bayar', 'Transfer')->count())

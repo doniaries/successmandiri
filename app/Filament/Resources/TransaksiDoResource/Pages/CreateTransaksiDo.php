@@ -90,17 +90,17 @@ class CreateTransaksiDo extends CreateRecord
                     throw new \Exception('Data penjual tidak ditemukan');
                 }
 
-                // Catat riwayat hutang
-                RiwayatHutang::create([
-                    'tipe_entitas' => 'penjual',
-                    'entitas_id' => $penjual->id,
-                    'nominal' => $record->pembayaran_hutang,
-                    'jenis' => 'pengurangan',
-                    'hutang_sebelum' => $record->hutang_awal,
-                    'hutang_sesudah' => $record->sisa_hutang_penjual,
-                    'keterangan' => "Pembayaran hutang melalui DO #{$record->nomor}",
-                    'transaksi_do_id' => $record->id
-                ]);
+                // // Catat riwayat hutang
+                // RiwayatHutang::create([
+                //     'tipe_entitas' => 'penjual',
+                //     'entitas_id' => $penjual->id,
+                //     'nominal' => $record->pembayaran_hutang,
+                //     'jenis' => 'pengurangan',
+                //     'hutang_sebelum' => $record->hutang_awal,
+                //     'hutang_sesudah' => $record->sisa_hutang_penjual,
+                //     'keterangan' => "Pembayaran hutang melalui DO #{$record->nomor}",
+                //     'transaksi_do_id' => $record->id
+                // ]);
 
                 // Tampilkan notifikasi detail
                 Notification::make()
