@@ -3,123 +3,54 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LaporanKeuanganResource\Pages;
-use App\Filament\Resources\LaporanKeuanganResource\Widgets\LaporanKeuanganDoStatsWidget;
+use App\Filament\Resources\LaporanKeuanganResource\RelationManagers;
 use App\Models\LaporanKeuangan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Notifications\Notification;
-use Filament\Support\Colors\Color;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class LaporanKeuanganResource extends Resource
 {
     protected static ?string $model = LaporanKeuangan::class;
 
-    // Navigation settings
-    protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    // protected static ?string $navigationGroup = 'Transaksi';
-    protected static ?string $navigationLabel = 'Laporan';
+    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?int $navigationSort = 2;
-    protected static ?string $pluralModelLabel = 'Laporan Keuangan';
-    protected static bool $shouldRegisterNavigation = true; // Tambahkan ini
-
-
-    public static function getWidgets(): array
-    {
-        return [
-            LaporanKeuanganDoStatsWidget::class,
-        ];
-    }
-
-    // Navigation badges dan color
-    public static function getNavigationBadge(): ?string
-    {
-        $totalCount = static::getModel()::count();
-        $masuk = static::getModel()::where('jenis', 'masuk')->count();
-        $keluar = static::getModel()::where('jenis', 'keluar')->count();
-
-        return "{$masuk} Masuk | {$keluar} Keluar";
-    }
-
-    public static function getNavigationBadgeColor(): ?string
-    {
-        $masuk = static::getModel()::where('jenis', 'masuk')->count();
-        $keluar = static::getModel()::where('jenis', 'keluar')->count();
-
-        return $masuk >= $keluar ? 'success' : 'danger';
-    }
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Group::make()
-                    ->schema([
-                        Forms\Components\Section::make()
-                            ->schema([
-                                Forms\Components\DateTimePicker::make('tanggal')
-                                    ->label('Tanggal')
-                                    ->displayFormat('d/m/Y H:i')
-                                    ->disabled(),
-
-                                Forms\Components\Select::make('jenis')
-                                    ->label('Jenis')
-                                    ->options([
-                                        'masuk' => 'Pemasukan',
-                                        'keluar' => 'Pengeluaran',
-                                    ])
-                                    ->disabled(),
-
-                                Forms\Components\Select::make('tipe_transaksi')
-                                    ->label('Tipe')
-                                    ->options([
-                                        'transaksi_do' => 'Transaksi DO',
-                                        'operasional' => 'Operasional'
-                                    ])
-                                    ->disabled(),
-
-                                Forms\Components\TextInput::make('kategori_do')
-                                    ->label('Kategori DO')
-                                    ->formatStateUsing(fn($state) => LaporanKeuangan::KATEGORI_DO[$state] ?? '-')
-                                    ->visible(fn($get) => $get('tipe_transaksi') === 'transaksi_do')
-                                    ->disabled(),
-
-                                Forms\Components\Select::make('kategori_operasional_id')
-                                    ->label('Kategori Operasional')
-                                    ->relationship('kategoriOperasional', 'nama')
-                                    ->visible(fn($get) => $get('tipe_transaksi') === 'operasional')
-                                    ->disabled(),
-
-                                Forms\Components\TextInput::make('keterangan')
-                                    ->disabled(),
-
-                                Forms\Components\TextInput::make('nominal')
-                                    ->label('Nominal')
-                                    ->prefix('Rp')
-                                    ->disabled()
-                                    ->numeric(),
-
-                                Forms\Components\TextInput::make('saldo_sebelum')
-                                    ->label('Saldo Sebelum')
-                                    ->prefix('Rp')
-                                    ->disabled()
-                                    ->numeric(),
-
-                                Forms\Components\TextInput::make('saldo_sesudah')
-                                    ->label('Saldo Sesudah')
-                                    ->prefix('Rp')
-                                    ->disabled()
-                                    ->numeric(),
-                            ])
-                            ->columns(2),
-                    ]),
+                Forms\Components\DateTimePicker::make('tanggal')
+                    ->required(),
+                Forms\Components\TextInput::make('jenis_transaksi')
+                    ->required(),
+                Forms\Components\TextInput::make('kategori')
+                    ->required()
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('sub_kategori')
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('nominal')
+                    ->required()
+                    ->numeric(),
+                Forms\Components\TextInput::make('sumber_transaksi')
+                    ->required()
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('referensi_id')
+                    ->required()
+                    ->numeric(),
+                Forms\Components\TextInput::make('nomor_referensi')
+                    ->maxLength(50),
+                Forms\Components\TextInput::make('pihak_terkait')
+                    ->maxLength(100),
+                Forms\Components\TextInput::make('tipe_pihak'),
+                Forms\Components\TextInput::make('cara_pembayaran')
+                    ->maxLength(20),
+                Forms\Components\Textarea::make('keterangan')
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -128,215 +59,103 @@ class LaporanKeuanganResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('tanggal')
-                    ->label('Tanggal')
-                    ->dateTime('d/m/Y H:i')
+                    ->dateTime()
+                    ->dateTime('d/M/Y H:i')
+                    ->label('Tanggal Transaksi')
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('jenis')
+                Tables\Columns\TextColumn::make('jenis_transaksi')
                     ->badge()
-                    ->formatStateUsing(fn(string $state) => match ($state) {
-                        'masuk' => 'Pemasukan',
-                        'keluar' => 'Pengeluaran',
-                    })
-                    ->color(fn(string $state): string => match ($state) {
-                        'masuk' => 'success',
-                        'keluar' => 'danger',
-                        default => 'gray',
-                    }),
-
-                Tables\Columns\TextColumn::make('tipe_transaksi')
-                    ->label('Tipe')
-                    ->badge()
-                    ->formatStateUsing(fn(string $state) => match ($state) {
-                        'transaksi_do' => 'Transaksi DO',
-                        'operasional' => 'Operasional',
-                    })
-                    ->color(fn(string $state): string => match ($state) {
-                        'transaksi_do' => 'info',
-                        'operasional' => 'warning',
-                        default => 'gray',
-                    }),
-
-
-
-                Tables\Columns\TextColumn::make('kategori')
-                    ->formatStateUsing(function (Model $record) {
-                        if ($record->tipe_transaksi === 'transaksi_do') {
-                            return LaporanKeuangan::KATEGORI_DO[$record->kategori_do] ?? '-';
-                        }
-                        return $record->kategoriOperasional?->nama ?? '-';
-                    })
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('nomor_transaksi')
-                    ->label('No. Transaksi')
-                    ->searchable()
-                    ->sortable()
-                    ->copyable()
-                    ->copyMessage('No. Transaksi Disalin'),
-
-                Tables\Columns\TextColumn::make('nama_penjual')
-                    ->label('Nama Penjual')
-                    ->searchable()
-                    ->copyable()
-                    ->copyMessage('Nama Penjual Disalin')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('keterangan')
-                    ->limit(50)
                     ->searchable(),
 
+                Tables\Columns\TextColumn::make('kategori')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('sub_kategori')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('nominal')
-                    ->money('IDR')
-                    ->alignment('right')
+                    ->numeric()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('sumber_transaksi')
+                    ->label('dari')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('referensi_id')
+                    ->numeric()
+                    ->hidden()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('nomor_referensi')
+                    ->label('Nomor DO')
+                    ->badge()
+                    ->copyable()
+                    ->copyMessage('Nomor DO berhasil disalin')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('pihak_terkait')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('tipe_pihak'),
+                Tables\Columns\TextColumn::make('cara_pembayaran')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
                     ->sortable()
-                    ->color(fn(Model $record): string => $record->jenis === 'masuk' ? 'success' : 'danger')
-                    ->weight('bold'),
-
-                // Tables\Columns\TextColumn::make('saldo_sesudah')
-                //     ->label('Saldo')
-                //     ->money('IDR')
-                //     ->alignment('right')
-                //     ->color('info')
-                //     ->weight('bold'),
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('deleted_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('nama_penjual')
-                    ->label('Penjual')
-                    ->options(function () {
-                        return LaporanKeuangan::whereNotNull('nama_penjual')
-                            ->distinct()
-                            ->pluck('nama_penjual', 'nama_penjual')
-                            ->toArray();
-                    })
-                    ->multiple(),
-
-                Tables\Filters\Filter::make('nomor_transaksi')
-                    ->form([
-                        Forms\Components\TextInput::make('nomor_transaksi')
-                            ->label('Nomor Transaksi')
-                            ->placeholder('Cari nomor transaksi...')
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['nomor_transaksi'],
-                            fn(Builder $query, $nomor): Builder => $query->where('nomor_transaksi', 'like', "%{$nomor}%")
-                        );
-                    }),
+                Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
-
-                Tables\Actions\ViewAction::make()
-                    ->afterFormFilled(function (Model $record) {
-                        Notification::make()
-                            ->title('Melihat Detail Transaksi')
-                            ->body("Melihat detail transaksi #{$record->id}")
-                            ->info()
-                            ->send();
-                    }),
+                Tables\Actions\EditAction::make(),
             ])
-            ->bulkActions([])
-            ->emptyStateHeading('Belum ada laporan keuangan')
-            ->emptyStateDescription('Laporan keuangan akan terisi otomatis saat ada transaksi DO atau operasional')
-            ->emptyStateIcon('heroicon-o-banknotes')
-            // ->poll('15s') // Auto refresh setiap 15 detik
-            ->modifyQueryUsing(fn(Builder $query) => $query->latest())
-            ->headerActions([
-                Tables\Actions\Action::make('refresh')
-                    ->label('Refresh Data')
-                    ->icon('heroicon-o-arrow-path')
-                    ->action(function () {
-                        Notification::make()
-                            ->title('Data Berhasil Diperbarui')
-                            ->success()
-                            ->send();
-                    }),
-                Tables\Actions\Action::make('downloadHarian')
-                    ->label('Download Laporan Harian')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->color('success')
-                    ->form([
-                        Forms\Components\DatePicker::make('tanggal')
-                            ->label('Pilih Tanggal')
-                            ->default(now())
-                            ->required()
-                            ->maxDate(now())
-                            ->format('d/m/Y') // Format tampilan date picker
-                            ->displayFormat('d/m/Y') // Format tampilan setelah dipilih
-                    ])
-                    ->action(function (array $data) {
-                        // Parse tanggal dari format d/m/Y ke objek Carbon
-                        $tanggal = Carbon::createFromFormat('d/m/Y', $data['tanggal'])->startOfDay();
-
-                        // Ambil data perusahaan
-                        $perusahaan = \App\Models\Perusahaan::where('is_active', true)->first();
-
-                        // Ambil transaksi harian
-                        $transaksi = DB::table('laporan_keuangan')
-                            ->whereDate('tanggal', $tanggal)
-                            ->orderBy('tanggal', 'asc')
-                            ->get();
-
-                        if ($transaksi->isEmpty()) {
-                            Notification::make()
-                                ->warning()
-                                ->title('Tidak ada data')
-                                ->body('Tidak ada transaksi pada tanggal tersebut')
-                                ->send();
-
-                            return;
-                        }
-
-                        // Format data untuk view
-                        $data = [
-                            'perusahaan' => $perusahaan,
-                            'tanggal' => $tanggal->format('d/m/Y'),
-                            'transaksi' => $transaksi,
-                            'total' => [
-                                'pemasukan' => $transaksi->where('jenis', 'masuk')->sum('nominal'),
-                                'pengeluaran' => $transaksi->where('jenis', 'keluar')->sum('nominal'),
-                                'saldo_akhir' => $perusahaan->saldo
-                            ]
-                        ];
-
-                        // Generate PDF
-                        $pdf = Pdf::loadView('laporan.keuangan-harian', $data);
-
-                        return response()->streamDownload(function () use ($pdf) {
-                            echo $pdf->output();
-                        }, "laporan-keuangan-{$tanggal->format('Y-m-d')}.pdf");
-                    })
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\ForceDeleteBulkAction::make(),
+                    Tables\Actions\RestoreBulkAction::make(),
+                ]),
             ])
-            ->poll('10s')
-            ->striped();
+            ->defaultSort('created_at', 'desc')
+            ->striped()
+            ->paginated([5, 10, 25, 50, 100, 'all'])
+            ->deferLoading()
+            ->poll('5s');
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array
     {
         return [
             'index' => Pages\ListLaporanKeuangans::route('/'),
-            'view' => Pages\ViewLaporanKeuangan::route('/{record}'),
+            'create' => Pages\CreateLaporanKeuangan::route('/create'),
+            'edit' => Pages\EditLaporanKeuangan::route('/{record}/edit'),
         ];
     }
 
-    protected function afterCreate(): void
+    public static function getEloquentQuery(): Builder
     {
-        Notification::make()
-            ->title('Transaksi Baru')
-            ->success()
-            ->body('Data transaksi berhasil dicatat')
-            ->persistent()
-            ->send();
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 
-    protected function afterDelete(): void
+    public static function getNavigationBadgeColor(): ?string
     {
-        Notification::make()
-            ->title('Transaksi Dihapus')
-            ->success()
-            ->body('Data transaksi berhasil dihapus')
-            ->send();
+        return 'primary';
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::count();
     }
 }

@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('alamat')->nullable();
             $table->string('telepon')->nullable();
             $table->decimal('hutang', 15, 0)->nullable();
+            $table->string('riwayat_bayar')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

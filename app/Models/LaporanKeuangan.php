@@ -2,36 +2,33 @@
 
 namespace App\Models;
 
+use App\Models\{Operasional, TransaksiDo};
+use App\Traits\{LaporanKeuanganTrait, DokumentasiTrait};
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LaporanKeuangan extends Model
 {
-    protected $table = 'laporan_keuangan';
+    use SoftDeletes, LaporanKeuanganTrait, DokumentasiTrait;
 
-    const KATEGORI_DO = [
-        '' => 'Bayar Hutang',
-        'biaya_lain' => 'Biaya Lain',
-        'upah_bongkar' => 'Upah Bongkar',
-        'pembayaran_do' => 'Pembayaran DO',
-    ];
+    protected $table = 'laporan_keuangan';
 
     protected $fillable = [
         'tanggal',
-        'jenis', // masuk/keluar
-        'tipe_transaksi', // transaksi_do/operasional
-        'kategori_do',
-        'kategori_operasional_id',
-        'keterangan',
+        'jenis_transaksi', // Sesuaikan dengan kolom di database
+        'kategori',        // Sesuaikan nama kolom
+        'sub_kategori',
         'nominal',
-        'saldo_sebelum',
-        'saldo_sesudah',
-        'transaksi_do_id',
-        'operasional_id',
-        'created_by',
-        'nomor_transaksi',
-        'nama_penjual',
-        'mempengaruhi_kas',
+        'sumber_transaksi',
+        'referensi_id',
+        'nomor_referensi',
+        'pihak_terkait',
+        'tipe_pihak',
         'cara_pembayaran',
+        'keterangan',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $casts = [
@@ -42,20 +39,16 @@ class LaporanKeuangan extends Model
         'mempengaruhi_kas' => 'boolean'
     ];
 
-    // Relationships
-    public function kategoriOperasional()
-    {
-        return $this->belongsTo(KategoriOperasional::class);
-    }
+    // Relations
 
     public function transaksiDo()
     {
-        return $this->belongsTo(TransaksiDo::class, 'transaksi_do_id');
+        return $this->belongsTo(TransaksiDo::class);
     }
 
     public function operasional()
     {
-        return $this->belongsTo(Operasional::class, 'operasional_id');
+        return $this->belongsTo(Operasional::class);
     }
 
     public function createdBy()
@@ -74,7 +67,17 @@ class LaporanKeuangan extends Model
         return $query->where('jenis', 'keluar');
     }
 
-    public function scopeMempengaruhiKas($query)
+    public function scopeFromDO($query)
+    {
+        return $query->where('tipe_transaksi', 'transaksi_do');
+    }
+
+    public function scopeFromOperasional($query)
+    {
+        return $query->where('tipe_transaksi', 'operasional');
+    }
+
+    public function scopeAffectsCash($query)
     {
         return $query->where('mempengaruhi_kas', true);
     }

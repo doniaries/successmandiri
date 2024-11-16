@@ -52,7 +52,8 @@ class PerusahaanResource extends Resource
                         ->schema([
                             Grid::make(2)
                                 ->schema([
-                                    Forms\Components\TextInput::make('nama')
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('Nama Perusahaan')
                                         ->required()
                                         ->maxLength(255),
                                     Forms\Components\TextInput::make('saldo')
@@ -60,23 +61,11 @@ class PerusahaanResource extends Resource
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->required()
                                         ->prefix('Rp.'),
-                                    Forms\Components\FileUpload::make('logo_path')
-                                        ->label('Logo Perusahaan')
-                                        ->image()
-                                        ->directory('company-logos'),
-                                    Forms\Components\FileUpload::make('favicon_path')
-                                        ->label('Favicon')
-                                        ->image()
-                                        ->directory('company-favicons'),
-                                    Forms\Components\ColorPicker::make('tema_warna')
-                                        ->label('Warna Tema'),
-                                ]),
-                        ]),
+                                    Forms\Components\TextInput::make('pimpinan')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('npwp')
+                                        ->maxLength(30),
 
-                    Section::make('Kontak & Alamat')
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
                                     Forms\Components\TextInput::make('alamat')
                                         ->maxLength(255),
                                     Forms\Components\TextInput::make('email')
@@ -85,29 +74,13 @@ class PerusahaanResource extends Resource
                                     Forms\Components\TextInput::make('telepon')
                                         ->tel()
                                         ->maxLength(255),
-
-                                ]),
-                        ]),
-
-                    Section::make('Informasi Bisnis')
-                        ->schema([
-                            Grid::make(2)
-                                ->schema([
-                                    Forms\Components\TextInput::make('pimpinan')
-                                        ->maxLength(255),
-                                    Forms\Components\TextInput::make('npwp')
-                                        ->maxLength(30),
-
-                                    Forms\Components\Select::make('kasir_id')
-                                        ->label('Kasir')
-                                        ->relationship('kasir', 'name')
-                                        ->searchable()
-                                        ->preload()
-                                        ->placeholder('Pilih Kasir'),
                                     Forms\Components\Toggle::make('is_active')
                                         ->required(),
                                 ]),
                         ]),
+
+
+
                 ]),
         ]);
     }
@@ -116,9 +89,9 @@ class PerusahaanResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('logo_path')
-                    ->label('Logo'),
-                Tables\Columns\TextColumn::make('nama')
+
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Nama Perusahaan')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('saldo')
                     ->money('IDR')

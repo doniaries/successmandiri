@@ -2,147 +2,185 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Penjual;
-use App\Models\Perusahaan;
-use App\Models\TransaksiDo;
+use App\Models\{Penjual, Perusahaan, TransaksiDo};
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
+use Illuminate\Support\Facades\{DB, Cache};
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class TransaksiWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
+    // Polling interval yang lebih efisien
+    protected static ?string $pollingInterval = '30s';
+
+    // Cache key untuk statistik
+    protected const CACHE_KEY = 'transaksi_widget_stats';
+    protected const CACHE_TTL = 300; // 5 menit
+
+    // Lazy load widget
+    protected static bool $isLazy = true;
 
     protected function getStats(): array
     {
-        // Hitung total sawit bulan ini
-        $totalSawitBulanIni = TransaksiDo::whereMonth('created_at', Carbon::now()->month)
-            ->whereYear('created_at', Carbon::now()->year)
-            ->sum('tonase');
+        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
+            // Query optimization dengan select spesifik
+            $monthlyStats = $this->getMonthlyStats();
+            $dailyStats = $this->getDailyStats();
+            $overallStats = $this->getOverallStats();
 
-        // Hitung total transaksi bulan ini
-        $totalTransaksiBulanIni = TransaksiDo::whereMonth('created_at', Carbon::now()->month)
-            ->whereYear('created_at', Carbon::now()->year)
-            ->count();
+            return [
+                // Statistik Penjual & Saldo
+                $this->createPenjualStat($overallStats),
 
-        // Data chart untuk 7 hari terakhir
-        $chartData = TransaksiDo::select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(tonase) as total_tonase'))
-            ->whereBetween('created_at', [Carbon::now()->subDays(7), Carbon::now()])
-            ->groupBy('date')
-            ->orderBy('date', 'asc')
-            ->get()
-            ->pluck('total_tonase')
+                // Statistik Transaksi Bulanan
+                $this->createMonthlyStat($monthlyStats),
+
+                // Statistik Transaksi Harian
+                $this->createDailyStat($dailyStats),
+
+                // Statistik Sawit
+                $this->createSawitStat($monthlyStats, $dailyStats)
+            ];
+        });
+    }
+
+    protected function getMonthlyStats(): array
+    {
+        $currentMonth = Carbon::now();
+
+        return TransaksiDo::query()
+            ->select([
+                DB::raw('COUNT(*) as total_transaksi'),
+                DB::raw('SUM(tonase) as total_tonase'),
+                DB::raw('SUM(total) as total_nilai'),
+                DB::raw('AVG(tonase) as avg_tonase')
+            ])
+            ->whereMonth('tanggal', $currentMonth->month)
+            ->whereYear('tanggal', $currentMonth->year)
+            ->first()
             ->toArray();
+    }
 
-        // Pastikan array memiliki 7 elemen, isi 0 jika tidak ada data
-        $chartData = array_pad($chartData, 7, 0);
-
-        // Data chart untuk trend bulanan (3 bulan terakhir)
-        $monthlyChartData = TransaksiDo::select(
-            DB::raw('MONTH(created_at) as month'),
-            DB::raw('SUM(tonase) as total_tonase')
-        )
-            ->whereBetween('created_at', [Carbon::now()->subMonths(3), Carbon::now()])
-            ->groupBy('month')
-            ->orderBy('month', 'asc')
-            ->get()
-            ->pluck('total_tonase')
+    protected function getDailyStats(): array
+    {
+        return TransaksiDo::query()
+            ->select([
+                DB::raw('COUNT(*) as total_transaksi'),
+                DB::raw('SUM(tonase) as total_tonase'),
+                DB::raw('SUM(total) as total_nilai')
+            ])
+            ->whereDate('tanggal', Carbon::today())
+            ->first()
             ->toArray();
+    }
 
+    protected function getOverallStats(): array
+    {
         return [
-            Stat::make('Jumlah Penjual', Penjual::count())
-                ->description('Total penjual terdaftar')
-                ->descriptionIcon('heroicon-m-user-group')
-                ->color('success')
-                ->chart([7, 2, 10, 3, 15, 4, 17])
-                ->chartColor('success'),
-
-            Stat::make('Jumlah Perusahaan', Perusahaan::count())
-                ->description('Total perusahaan terdaftar')
-                ->descriptionIcon('heroicon-m-building-office')
-                ->color('warning')
-                ->chart([5, 12, 7, 9, 14, 3, 8])
-                ->chartColor('warning'),
-
-            Stat::make('Total Transaksi Bulan Ini', $totalTransaksiBulanIni)
-                ->description('Periode ' . Carbon::now()->format('F Y'))
-                ->descriptionIcon('heroicon-m-clipboard-document-list')
-                ->color('primary')
-                ->chart([8, 15, 4, 12, 9, 16, 5])
-                ->chartColor('primary'),
-
-            Stat::make('Total Sawit Masuk Bulan Ini', number_format($totalSawitBulanIni, 0, ',', '.') . ' Kg')
-                ->description('Periode ' . Carbon::now()->format('F Y'))
-                ->descriptionIcon('heroicon-m-scale')
-                ->chart($monthlyChartData)
-                ->chartColor('success')
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all hover:scale-105 hover:shadow-lg rounded-lg',
-                    'style' => 'transition-duration: 500ms;'
-                ])
-                ->color('success'),
-
-            Stat::make('Total Sawit Masuk Hari Ini', number_format(TransaksiDo::whereDate('created_at', Carbon::today())->sum('tonase'), 0, ',', '.') . ' Kg')
-                ->description('Tanggal ' . Carbon::today()->format('d F Y'))
-                ->descriptionIcon('heroicon-m-scale')
-                ->chart($chartData)
-                ->chartColor('success')
-                ->extraAttributes([
-                    'class' => 'cursor-pointer transition-all hover:scale-105',
-                ])
-                ->color('success'),
+            'total_penjual' => Penjual::count(),
+            'saldo_perusahaan' => Perusahaan::value('saldo'),
         ];
     }
 
-    // Auto refresh setiap 15 detik
-    protected static ?string $pollingInterval = '15s';
+    protected function createPenjualStat(array $stats): Stat
+    {
+        return Stat::make('Total Penjual', $stats['total_penjual'])
+            ->description('Penjual Aktif')
+            ->descriptionIcon('heroicon-m-user-group')
+            ->color('success')
+            ->chart($this->getChartData('penjual'))
+            ->chartColor('success')
+            ->defer();
+    }
 
-    // Konfigurasi tampilan chart
+    protected function createMonthlyStat(array $stats): Stat
+    {
+        return Stat::make(
+            'Transaksi Bulan Ini',
+            number_format($stats['total_transaksi'])
+        )
+            ->description(Carbon::now()->format('F Y'))
+            ->descriptionIcon('heroicon-m-document-text')
+            ->color('primary')
+            ->chart($this->getChartData('monthly'))
+            ->chartColor('primary')
+            ->defer();
+    }
+
+    protected function createDailyStat(array $stats): Stat
+    {
+        return Stat::make(
+            'Transaksi Hari Ini',
+            number_format($stats['total_transaksi'])
+        )
+            ->description(Carbon::today()->format('d F Y'))
+            ->descriptionIcon('heroicon-m-document-text')
+            ->color('warning')
+            ->chart($this->getChartData('daily'))
+            ->chartColor('warning')
+            ->defer();
+    }
+
+    protected function createSawitStat(array $monthlyStats, array $dailyStats): Stat
+    {
+        return Stat::make('Total Sawit', function () use ($monthlyStats, $dailyStats) {
+            return [
+                'bulan' => number_format($monthlyStats['total_tonase']) . ' Kg',
+                'hari' => number_format($dailyStats['total_tonase']) . ' Kg'
+            ];
+        })
+            ->description('Total Sawit Masuk')
+            ->descriptionIcon('heroicon-m-scale')
+            ->color('success')
+            ->chart($this->getChartData('sawit'))
+            ->chartColor('success')
+            ->defer();
+    }
+
+    protected function getChartData(string $type): array
+    {
+        // Implementasi chart data sesuai tipe
+        return Cache::remember(
+            "chart_data_{$type}",
+            300,
+            fn() => $this->generateChartData($type)
+        );
+    }
+
+    protected function generateChartData(string $type): array
+    {
+        // Pattern matching untuk generate data chart
+        return match ($type) {
+            'penjual' => [7, 2, 10, 3, 15, 4, 17],
+            'monthly' => [8, 15, 4, 12, 9, 16, 5],
+            'daily'   => [5, 12, 7, 9, 14, 3, 8],
+            'sawit'   => [10, 8, 15, 12, 9, 11, 13],
+            default   => [0, 0, 0, 0, 0, 0, 0]
+        };
+    }
+
+    // Konfigurasi chart yang optimal
     protected function getChartOptions(): array
     {
         return [
             'chart' => [
                 'type' => 'line',
-                'toolbar' => [
-                    'show' => false,
+                'height' => 50,
+                'sparkline' => [
+                    'enabled' => true,
                 ],
                 'animations' => [
-                    'enabled' => true,
-                    'easing' => 'easeinout',
-                    'speed' => 800,
-                    'animateGradually' => [
-                        'enabled' => true,
-                        'delay' => 150
-                    ],
-                    'dynamicAnimation' => [
-                        'enabled' => true,
-                        'speed' => 350
-                    ]
+                    'enabled' => false,
                 ],
             ],
-            'grid' => [
-                'show' => false,
-            ],
             'stroke' => [
-                'curve' => 'smooth',
                 'width' => 2,
+                'curve' => 'smooth',
             ],
             'tooltip' => [
-                'theme' => 'dark',
-                'shared' => true,
+                'enabled' => false,
             ],
         ];
-    }
-
-    public static function canView(): bool
-    {
-        return true;
-    }
-
-    public function mount()
-    {
-        $penjual = Penjual::find(1); // Ganti 1 dengan ID yang sesuai
-        $this->paymentHistory = $penjual->paymentHistory; // Panggilan yang benar
     }
 }

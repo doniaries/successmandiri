@@ -40,6 +40,11 @@ class CreateTransaksiDo extends CreateRecord
                 }
             }
 
+            // PERBAIKAN 6: Set default tanggal jika kosong
+            if (!isset($data['tanggal'])) {
+                $data['tanggal'] = now();
+            }
+
             // Validasi hutang dan pembayaran
             if ($data['penjual_id']) {
                 $penjual = Penjual::find($data['penjual_id']);
@@ -89,18 +94,6 @@ class CreateTransaksiDo extends CreateRecord
                 if (!$penjual) {
                     throw new \Exception('Data penjual tidak ditemukan');
                 }
-
-                // // Catat riwayat hutang
-                // RiwayatHutang::create([
-                //     'tipe_entitas' => 'penjual',
-                //     'entitas_id' => $penjual->id,
-                //     'nominal' => $record->pembayaran_hutang,
-                //     'jenis' => 'pengurangan',
-                //     'hutang_sebelum' => $record->hutang_awal,
-                //     'hutang_sesudah' => $record->sisa_hutang_penjual,
-                //     'keterangan' => "Pembayaran hutang melalui DO #{$record->nomor}",
-                //     'transaksi_do_id' => $record->id
-                // ]);
 
                 // Tampilkan notifikasi detail
                 Notification::make()

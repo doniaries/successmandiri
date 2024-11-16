@@ -4,17 +4,14 @@ namespace App\Filament\Resources\TransaksiDoResource\Pages;
 
 use App\Filament\Resources\TransaksiDoResource;
 use App\Filament\Resources\TransaksiDoResource\Widgets\TransaksiDoStatWidget;
-use App\Models\Operasional; // Tambahkan ini
-use Illuminate\Support\Facades\DB; // Tambahkan ini
-use Filament\Actions;  // Ubah import ini
-use Filament\Actions\Action;
+use App\Models\Operasional;
+use App\Models\TransaksiDo;
+use Illuminate\Support\Facades\DB;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ListRecords\Tab; // Tambahkan import ini
+use Filament\Resources\Pages\ListRecords\Tab;
 use Illuminate\Database\Eloquent\Builder;
-
-
-
 
 class ListTransaksiDos extends ListRecords
 {
@@ -27,6 +24,8 @@ class ListTransaksiDos extends ListRecords
 
         ];
     }
+
+
 
     protected function getHeaderWidgets(): array
     {
@@ -49,6 +48,10 @@ class ListTransaksiDos extends ListRecords
             'semua' => Tab::make('Semua Transaksi')
                 ->icon('heroicon-o-clipboard-document-list')
                 ->badge(fn() => $this->getModel()::count())
+                ->modifyQueryUsing(
+                    fn(Builder $query) =>
+                    $query->whereDate('tanggal', '>=', now()->subDays(30))
+                )
                 ->badgeColor('primary'),
 
             'tunai' => Tab::make('Tunai')

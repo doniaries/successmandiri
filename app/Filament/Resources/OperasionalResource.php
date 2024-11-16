@@ -9,7 +9,6 @@ use Filament\Tables\Table;
 use App\Models\Operasional;
 use Filament\Resources\Resource;
 use Filament\Support\Colors\Color;
-use App\Models\KategoriOperasional;
 use Filament\Forms\Components\Grid;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\Section;
@@ -19,7 +18,6 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Filament\Resources\OperasionalResource\Pages;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
 
 class OperasionalResource extends Resource
 {
@@ -29,12 +27,10 @@ class OperasionalResource extends Resource
     protected static ?string $navigationLabel = 'Operasional';
     protected static ?int $navigationSort = 5;
 
-    //count
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::count();
     }
-
 
     public static function form(Form $form): Form
     {
@@ -59,35 +55,26 @@ class OperasionalResource extends Resource
                                     ->native(false)
                                     ->live()
                                     ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                        $set('kategori_id', null);
+                                        $set('kategori', null);
                                         $set('tipe_nama', null);
                                         $set('penjual_id', null);
                                         $set('user_id', null);
                                     }),
 
-                                Forms\Components\Select::make('kategori_id')
+                                Forms\Components\Select::make('kategori')
                                     ->label('Kategori')
-                                    ->options(function (Forms\Get $get) {
-                                        return KategoriOperasional::query()
-                                            ->where('jenis', $get('operasional'))
-                                            ->pluck('nama', 'id');
-                                    })
+                                    ->options(Operasional::KATEGORI_OPERASIONAL)
                                     ->required()
                                     ->native(false)
-                                    ->searchable()
-                                    ->preload()
                                     ->live()
-                                    ->visible(fn(Forms\Get $get) => filled($get('operasional')))
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('nama')
-                                            ->required()
-                                            ->maxLength(255),
-                                        Forms\Components\Select::make('jenis')
-                                            ->options(KategoriOperasional::JENIS_KATEGORI)
-                                            ->required(),
-                                        Forms\Components\TextInput::make('keterangan')
-                                            ->maxLength(255),
-                                    ])
+                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                        if ($state === 'bayar_hutang') {
+                                            $set('operasional', 'pemasukan');
+                                        } elseif ($state === 'pinjaman') {
+                                            $set('operasional', 'pengeluaran');
+                                        }
+                                    })
+                                    ->visible(fn(Forms\Get $get) => filled($get('operasional'))),
                             ])
                             ->columns(1),
 
@@ -110,7 +97,7 @@ class OperasionalResource extends Resource
                                         $set('info_hutang', null);
                                         $set('jumlah_hutang', 0);
                                     })
-                                    ->visible(fn(Forms\Get $get) => filled($get('kategori_id'))),
+                                    ->visible(fn(Forms\Get $get) => filled($get('kategori'))),
 
                                 Forms\Components\Select::make('penjual_id')
                                     ->label('Nama Penjual')
@@ -141,35 +128,6 @@ class OperasionalResource extends Resource
                                     })
                                     ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'penjual'),
 
-                                Forms\Components\Select::make('pekerja_id')
-                                    ->label('Nama Pekerja')
-                                    ->relationship('pekerja', 'nama')
-                                    ->searchable()
-                                    ->preload()
-                                    ->live()
-                                    ->createOptionForm([
-                                        Forms\Components\TextInput::make('nama')
-                                            ->required()
-                                            ->maxLength(255),
-                                        Forms\Components\TextInput::make('alamat')
-                                            ->maxLength(255),
-                                        Forms\Components\TextInput::make('telepon')
-                                            ->maxLength(255),
-                                    ])
-                                    ->afterStateUpdated(function ($state, Forms\Set $set) {
-                                        if ($state) {
-                                            $pekerja = \App\Models\Pekerja::find($state);
-                                            if ($pekerja) {
-                                                $set('info_hutang', "Rp " . number_format($pekerja->hutang, 0, ',', '.'));
-                                                $set('jumlah_hutang', $pekerja->hutang);
-                                            }
-                                        } else {
-                                            $set('info_hutang', null);
-                                            $set('jumlah_hutang', 0);
-                                        }
-                                    })
-                                    ->visible(fn(Forms\Get $get) => $get('tipe_nama') === 'pekerja'),
-
                                 Forms\Components\Select::make('user_id')
                                     ->label('Nama Karyawan')
                                     ->relationship('user', 'name')
@@ -183,13 +141,9 @@ class OperasionalResource extends Resource
                                     ->content(fn(Forms\Get $get): string => $get('info_hutang') ?? 'Rp 0')
                                     ->visible(
                                         fn(Forms\Get $get) =>
-                                        in_array($get('tipe_nama'), ['penjual', 'pekerja']) &&
-                                            (filled($get('penjual_id')) || filled($get('pekerja_id')))
+                                        in_array($get('tipe_nama'), ['penjual']) &&
+                                            filled($get('penjual_id'))
                                     )
-                                    ->extraAttributes([
-                                        'class' => 'text-2xl font-bold text-yellow-400',
-                                        'style' => 'text-transform: uppercase;'
-                                    ])
                             ])
                             ->columns(1),
 
@@ -209,7 +163,7 @@ class OperasionalResource extends Resource
                                     ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                         if (
                                             $get('operasional') === 'pemasukan' &&
-                                            $get('kategori_id') &&
+                                            $get('kategori') &&
                                             filled($get('jumlah_hutang'))
                                         ) {
                                             $nominal = (int) str_replace(['.', ','], ['', '.'], $state);
@@ -230,8 +184,7 @@ class OperasionalResource extends Resource
                                         filled($get('tipe_nama')) &&
                                             (
                                                 filled($get('penjual_id')) ||
-                                                filled($get('user_id')) ||
-                                                filled($get('pekerja_id'))
+                                                filled($get('user_id'))
                                             )
                                     ),
 
@@ -254,17 +207,13 @@ class OperasionalResource extends Resource
                             ])
                             ->columns(1)
                     ])
-                    // ->columnSpan(['lg' => 2])
                     ->columnSpan('full')
                     ->extraAttributes([
                         'class' => 'mx-auto max-w-4xl'
                     ])
             ])
             ->columns(1);
-        // ->columns(['lg' => 3]);
     }
-
-
 
     public static function table(Table $table): Table
     {
@@ -284,10 +233,15 @@ class OperasionalResource extends Resource
                         'pemasukan' => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('kategori.nama')
+
+                Tables\Columns\TextColumn::make('kategori')
                     ->label('Kategori')
-                    ->searchable()
-                    ->sortable(),
+                    ->formatStateUsing(
+                        fn(string $state): string =>
+                        Operasional::KATEGORI_OPERASIONAL[$state] ?? '-'
+                    )
+                    ->searchable(),
+
                 Tables\Columns\TextColumn::make('tipe_nama')
                     ->label('Tipe')
                     ->badge(),
@@ -335,19 +289,13 @@ class OperasionalResource extends Resource
                     ->limit(30)
                     ->searchable()
                     ->description(fn(Operasional $record) =>
-                    $record->is_from_transaksi ? 'Data dari Transaksi DO' : null)
-                    ->tooltip(fn(Operasional $record) => $record->keterangan),
+                    $record->is_from_transaksi ? 'Data dari Transaksi DO' : null),
 
                 Tables\Columns\ImageColumn::make('file_bukti')
                     ->label('Bukti')
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png'))
                     ->alignCenter(),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('tanggal', 'desc')
             ->poll('5s')
@@ -355,24 +303,13 @@ class OperasionalResource extends Resource
             ->modifyQueryUsing(fn(Builder $query) => $query->latest('tanggal'))
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
-                SelectFilter::make('operasional')
-                    ->label('Jenis Operasional')
-                    ->options([
-                        'isi_saldo' => 'ISI SALDO',
-                        'bahan_bakar' => 'BAHAN BAKAR',
-                        'transportasi' => 'TRANSPORTASI',
-                        'perawatan' => 'PERAWATAN',
-                        'gaji' => 'GAJI',
-                        'pinjaman' => 'PINJAMAN',
-                    ])
-                    ->multiple()
-                    ->indicator('Jenis'),
-                SelectFilter::make('kategori_id')
+                SelectFilter::make('kategori')
                     ->label('Kategori')
-                    ->relationship('kategori', 'nama')
-                    ->searchable()
-                    ->preload()
-                    ->multiple(),
+                    ->options(Operasional::KATEGORI_OPERASIONAL)
+                    ->multiple()
+                    ->indicator('Kategori'),
+                // Di bagian filters(), perbaiki bagian Filter::make('tanggal')
+
                 Filter::make('tanggal')
                     ->form([
                         Forms\Components\Grid::make(2)
@@ -387,26 +324,23 @@ class OperasionalResource extends Resource
                         return $query
                             ->when(
                                 $data['dari_tanggal'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '>=', $date),
+                                fn(Builder $query, $date) => $query->whereDate('tanggal', '>=', $date)
                             )
                             ->when(
                                 $data['sampai_tanggal'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '<=', $date),
+                                fn(Builder $query, $date) => $query->whereDate('tanggal', '<=', $date)
                             );
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
-
                         if ($data['dari_tanggal'] ?? null) {
                             $indicators['dari_tanggal'] = 'Dari: ' . date('d/m/Y', strtotime($data['dari_tanggal']));
                         }
-
                         if ($data['sampai_tanggal'] ?? null) {
                             $indicators['sampai_tanggal'] = 'Sampai: ' . date('d/m/Y', strtotime($data['sampai_tanggal']));
                         }
-
                         return $indicators;
-                    }),
+                    })
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -416,7 +350,7 @@ class OperasionalResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
-                    ->action(function (EloquentCollection $records) {  // Ubah tipe Collection
+                    ->action(function (EloquentCollection $records) {
                         $records->reject(fn($record) => $record->is_from_transaksi)
                             ->each(fn($record) => $record->delete());
                     })
@@ -429,7 +363,7 @@ class OperasionalResource extends Resource
                     ),
 
                 Tables\Actions\ForceDeleteBulkAction::make()
-                    ->action(function (EloquentCollection $records) {  // Ubah tipe Collection
+                    ->action(function (EloquentCollection $records) {
                         $records->reject(fn($record) => $record->is_from_transaksi)
                             ->each(fn($record) => $record->forceDelete());
                     })
@@ -442,7 +376,7 @@ class OperasionalResource extends Resource
                     ),
 
                 Tables\Actions\RestoreBulkAction::make()
-                    ->action(function (EloquentCollection $records) {  // Ubah tipe Collection
+                    ->action(function (EloquentCollection $records) {
                         $records->reject(fn($record) => $record->is_from_transaksi)
                             ->each(fn($record) => $record->restore());
                     })
@@ -453,7 +387,6 @@ class OperasionalResource extends Resource
                             ->title('Data berhasil dipulihkan')
                             ->body('Data yang bukan dari transaksi DO telah dipulihkan')
                     ),
-
             ])
             ->emptyStateHeading('Belum ada data operasional')
             ->emptyStateDescription('Silakan tambah data operasional baru dengan klik tombol di atas')

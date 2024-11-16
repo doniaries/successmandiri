@@ -19,6 +19,9 @@ class TransaksiDoStatWidget extends BaseWidget
     protected function getStats(): array
     {
         try {
+            // PERBAIKAN 8: Tentukan zona waktu yang konsisten
+
+            // $transaksiHariIni = TransaksiDo::where('tanggal', '>=', $today)
             // Cek data perusahaan
             $perusahaan = Perusahaan::first();
             if (!$perusahaan) {
@@ -29,6 +32,8 @@ class TransaksiDoStatWidget extends BaseWidget
                         ->color('danger')
                 ];
             }
+            $today = now()->setTimezone('Asia/Jakarta')->startOfDay();
+
 
             // Data transaksi hari ini
             $transaksiHariIni = TransaksiDo::whereDate('tanggal', Carbon::today())

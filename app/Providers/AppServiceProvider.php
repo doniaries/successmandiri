@@ -3,11 +3,9 @@
 namespace App\Providers;
 
 use URL;
-use App\Models\Operasional;
-use App\Observers\OperasionalObserver;
 use Illuminate\Support\ServiceProvider;
-use App\Models\TransaksiDo;
-use App\Observers\TransaksiDoObserver;
+use App\Models\{Operasional, TransaksiDo, LaporanKeuangan};
+use App\Observers\{OperasionalObserver, TransaksiDoObserver, LaporanKeuanganObserver};
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,8 +28,9 @@ class AppServiceProvider extends ServiceProvider
         //     URL::forceScheme('https');
         // }
 
-        \Log::info('Registering Observers');
+        // Register observers dengan namespace yang benar
         Operasional::observe(OperasionalObserver::class);
         TransaksiDo::observe(TransaksiDoObserver::class);
+        LaporanKeuangan::observe(LaporanKeuanganObserver::class);
     }
 }

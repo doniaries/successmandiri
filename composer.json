@@ -9,6 +9,7 @@
         "ariaieboy/filament-currency": "*",
         "barryvdh/laravel-dompdf": "^3.0",
         "deployer/deployer": "^7.5",
+        "doctrine/dbal": "^4.2",
         "filament/filament": "^3.2",
         "filament/spatie-laravel-settings-plugin": "^3.2",
         "hugomyb/filament-media-action": "^3.1",

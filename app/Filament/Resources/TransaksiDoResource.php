@@ -59,8 +59,9 @@ class TransaksiDoResource extends Resource
                         ->schema([
                             Forms\Components\TextInput::make('nomor')
                                 ->label('Nomor DO')
-                                // ->default(fn() => 'DO-' . str_pad((static::getModel()::withTrashed()->max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT))
-                                ->default(fn() => TransaksiDo::generateMonthlyNumber())
+                                ->default(function () {
+                                    return TransaksiDo::generateMonthlyNumber();
+                                })
                                 ->disabled()
                                 ->dehydrated(),
 
@@ -70,6 +71,7 @@ class TransaksiDoResource extends Resource
                                 ->displayFormat('d/m/Y') // Format tampilan hanya tanggal
                                 ->default(Carbon::now()) // Menggunakan Carbon untuk nilai default
                                 ->required()
+                                ->disabled()
                                 ->dehydrated(),
 
                         ])
@@ -202,10 +204,6 @@ class TransaksiDoResource extends Resource
                                         ->afterStateUpdated(fn($state, Forms\Get $get, Forms\Set $set) =>
                                         static::hitungSisaBayar($state, $get, $set)),
 
-                                    Forms\Components\TextInput::make('keterangan_biaya_lain')
-                                        ->label('Keterangan Biaya Lain')
-                                        ->placeholder('uang jalan + ...'),
-
                                     Forms\Components\TextInput::make('pembayaran_hutang')
                                         ->label('Bayar Hutang')
                                         ->currencyMask(
@@ -246,6 +244,10 @@ class TransaksiDoResource extends Resource
                                             $sisaBayar = max(0, $total - $upahBongkar - $biayaLain - $bayarHutang);
                                             $set('sisa_bayar', $sisaBayar);
                                         }),
+
+                                    Forms\Components\TextInput::make('keterangan_biaya_lain')
+                                        ->label('Keterangan Biaya Lain')
+                                        ->placeholder('uang jalan + ...'),
                                     Forms\Components\Select::make('status_bayar')
                                         ->label('Status Bayar')
                                         ->options([
@@ -303,6 +305,7 @@ class TransaksiDoResource extends Resource
 
                                     Forms\Components\TextInput::make('sisa_bayar')
                                         ->label('Sisa Bayar')
+                                        ->required()
                                         ->prefix('Rp')
                                         ->currencyMask(thousandSeparator: ',', decimalSeparator: '.', precision: 0)
                                         ->disabled()
@@ -527,16 +530,6 @@ class TransaksiDoResource extends Resource
 
     //---------------------------------//
 
-    // public static function getEloquentQuery(): Builder
-    // {
-    //     return parent::getEloquentQuery()
-    //         ->withoutGlobalScopes([
-    //             SoftDeletingScope::class,
-    //         ])
-    //         ->with(['penjual'])
-    //         ->latest();
-    // }
-
 
     public static function getPages(): array
     {
@@ -547,13 +540,7 @@ class TransaksiDoResource extends Resource
         ];
     }
 
-    // public static function getEloquentQuery(): Builder
-    // {
-    //     return parent::getEloquentQuery()
-    //         ->withoutGlobalScopes([
-    //             SoftDeletingScope::class,
-    //         ]);
-    // }
+
 
     public static function getNavigationBadgeColor(): ?string
     {
@@ -570,18 +557,6 @@ class TransaksiDoResource extends Resource
         }
         return (int) $number;
     }
-
-    //     // Jika input string (dari currency mask)
-    //     if (is_string($number)) {
-    //         // Hapus Rp dan spasi
-    //         $number = preg_replace('/[^0-9,.]/', '', $number);
-    //         // Konversi ke format angka
-    //         return (int) str_replace(['.', ','], ['', '.'], $number);
-    //     }
-
-    //     return (int) $number;
-    // }
-
 
     //-----------------------------//
     // Helper methods untuk kalkulasi

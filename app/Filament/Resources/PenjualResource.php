@@ -261,15 +261,7 @@ class PenjualResource extends Resource
                             $hutangSebelum = $record->hutang;
                             $record->decrement('hutang', $nominal);
 
-                            // // Catat di riwayat hutang
-                            // $record->riwayatHutang()->create([
-                            //     'tipe_entitas' => 'penjual',
-                            //     'nominal' => $nominal,
-                            //     'jenis' => 'pengurangan',
-                            //     'hutang_sebelum' => $hutangSebelum,
-                            //     'hutang_sesudah' => $record->fresh()->hutang,
-                            //     'keterangan' => $data['keterangan'],
-                            // ]);
+
 
                             DB::commit();
 

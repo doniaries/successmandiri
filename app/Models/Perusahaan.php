@@ -14,10 +14,7 @@ class Perusahaan extends Model
     protected $table = 'perusahaans';
 
     protected $fillable = [
-        'nama',
-        'logo_path',
-        'favicon_path',
-        'tema_warna',
+        'name',
         'alamat',
         'email',
         'telepon',
@@ -26,8 +23,6 @@ class Perusahaan extends Model
         'saldo',
         'npwp',
         'no_izin_usaha',
-        'setting',
-        'kasir_id',
     ];
 
     protected $casts = [
@@ -36,11 +31,6 @@ class Perusahaan extends Model
         'setting' => 'json',
     ];
 
-    // Relasi dengan User (Kasir)
-    public function kasir()
-    {
-        return $this->belongsTo(User::class, 'kasir_id');
-    }
 
     // Helper method untuk format saldo
     public function getFormattedSaldoAttribute()

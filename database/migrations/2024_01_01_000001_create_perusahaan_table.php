@@ -10,23 +10,18 @@ return new class extends Migration
     {
         Schema::create('perusahaans', function (Blueprint $table) {
             $table->id();
-            $table->string('nama');
+            $table->string('name')->unique();
             $table->decimal('saldo', 15, 0)->default(0);
-            $table->string('logo_path')->nullable();
-            $table->string('favicon_path')->nullable();
-            $table->string('tema_warna', 20)->nullable();
             $table->string('alamat')->nullable();
             $table->string('telepon')->nullable();
             $table->string('email')->nullable();
             $table->string('pimpinan')->nullable()->comment('Pimpinan Perusahaan');
-            $table->foreignId('kasir_id')->nullable()->comment('Kasir Perusahaan')->constrained('users')->nullOnDelete();
             $table->string('npwp', 30)->nullable();
-            $table->json('setting')->nullable();
             $table->boolean('is_active')->default(true)->comment('Status aktif perusahaan');
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index('nama');
+            $table->index('name');
             $table->index('email');
             $table->index('telepon');
             $table->index('npwp');

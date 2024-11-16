@@ -16,13 +16,8 @@ return new class extends Migration
             $table->id();
             $table->dateTime('tanggal');
             $table->enum('operasional', ['pemasukan', 'pengeluaran']);
-            $table->foreignId('kategori_id')
-                ->nullable()
-                ->constrained('kategori_operasional')
-                ->nullOnDelete();
-
+            $table->string('kategori');
             $table->enum('tipe_nama', ['penjual', 'user']);
-
             $table->foreignId('penjual_id')
                 ->nullable()
                 ->constrained('penjuals')

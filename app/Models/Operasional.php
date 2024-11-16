@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Models\User;
 use App\Models\Penjual;
-use App\Models\KategoriOperasional;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +18,7 @@ class Operasional extends Model
     protected $fillable = [
         'tanggal',
         'operasional',
-        'kategori_id',
+        'kategori', // ganti dari kategori_id
         'tipe_nama',
         'penjual_id',
         'user_id',
@@ -48,13 +47,13 @@ class Operasional extends Model
     ];
 
     const KATEGORI_OPERASIONAL = [
-        '' => 'Bayar Hutang',
+        'bayar_hutang' => 'Bayar Hutang',
         'uang_jalan' => 'Uang Jalan',
         'gaji' => 'Gaji',
         'bahan_bakar' => 'Bahan Bakar',
         'perawatan' => 'Perawatan',
+        'pinjaman' => 'Pinjaman',
         'lain_lain' => 'Lain-lain',
-        'pinjaman' => 'Pinjaman'
     ];
 
     // Relations
@@ -88,10 +87,6 @@ class Operasional extends Model
         return $this->belongsTo(TransaksiDo::class, 'transaksi_do_id');
     }
 
-    public function kategori()
-    {
-        return $this->belongsTo(KategoriOperasional::class, 'kategori_id');
-    }
 
     // Helper method untuk cek apakah data dari transaksi
     public function isFromTransaksi(): bool
@@ -108,5 +103,10 @@ class Operasional extends Model
     public function scopeFromTransaksi($query)
     {
         return $query->where('is_from_transaksi', true);
+    }
+
+    public function getKategoriNameAttribute(): string
+    {
+        return static::KATEGORI_OPERASIONAL[$this->kategori] ?? '-';
     }
 }

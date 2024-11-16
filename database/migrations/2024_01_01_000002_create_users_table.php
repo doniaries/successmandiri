@@ -10,15 +10,21 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('perusahaan_id')->nullable()->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('email')->unique();
-            $table->boolean('status')->default(true);
+            $table->boolean('is_active')->default(true);
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
+
+            // Indexes
+            $table->index('name');
             $table->index('email');
+            $table->index(['perusahaan_id', 'email']);
+            $table->index(['perusahaan_id', 'name']);
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

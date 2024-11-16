@@ -14,12 +14,16 @@ return new class extends Migration
         Schema::create('pekerja', function (Blueprint $table) {
             $table->id();
             $table->string('nama');
-            $table->string('alamat');
-            $table->string('telepon');
-            $table->string('pendapatan');
-            $table->string('hutang');
+            $table->string('alamat')->nullable();
+            $table->string('telepon')->nullable();
+            $table->string('pendapatan')->default(0);
+            $table->string('hutang')->default(0);
+            $table->string('riwayat_bayar')->nullable();
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index('nama');
+            $table->index('telepon');
         });
     }
 

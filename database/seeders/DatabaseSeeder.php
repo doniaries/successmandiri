@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Super Admin',
             'email' => 'superadmin@gmail.com',
             'password' => Hash::make('password'),
-            'status' => true,
+            'is_active' => true,
             'email_verified_at' => now(),
         ]);
 
@@ -28,7 +28,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Kasir 1',
             'email' => 'kasir1@gmail.com',
             'password' => Hash::make('password'),
-            'status' => true,
+            'is_active' => true,
             'email_verified_at' => now(),
         ]);
 

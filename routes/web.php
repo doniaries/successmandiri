@@ -15,11 +15,3 @@ Route::get('/', function () {
 Route::middleware(['auth', 'check.perusahaan'])->group(function () {
     // routes yang membutuhkan data perusahaan
 });
-
-// Route::middleware([
-//     'auth:sanctum',
-//     config('jetstream.auth_session'),
-//     'verified'
-// ])->group(function () {
-//     Route::get('/settings', ManageSettings::class)->name('filament.pages.settings');
-// });

@@ -2,10 +2,11 @@
 
 namespace App\Observers;
 
-use App\Services\CacheService;
 use Illuminate\Support\Str;
+use App\Services\CacheService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\{DB, Log};
+use App\Observers\LaporanKeuanganObserver;
 use App\Models\{TransaksiDo, LaporanKeuangan, Perusahaan, Penjual};
 
 class TransaksiDoObserver
@@ -93,160 +94,7 @@ class TransaksiDoObserver
      */
     public function created(TransaksiDo $transaksiDo)
     {
-        try {
-            DB::beginTransaction();
-
-            // Clear cache menggunakan CacheService
-            CacheService::clearTransaksiCache($transaksiDo->penjual_id);
-
-            $perusahaan = Perusahaan::first();
-            if (!$perusahaan) {
-                throw new \Exception("Data perusahaan tidak ditemukan");
-            }
-
-            $saldoBerjalan = $perusahaan->saldo;
-
-            // Proses berdasarkan cara bayar
-            switch ($transaksiDo->cara_bayar) {
-                case 'Tunai':
-                    // 1. Proses Pemasukan Tunai (upah bongkar & biaya lain)
-                    $komponenPemasukan = [
-                        'upah_bongkar' => [
-                            'nominal' => $transaksiDo->upah_bongkar,
-                            'keterangan' => "Pemasukan Upah Bongkar (Tunai)"
-                        ],
-                        'biaya_lain' => [
-                            'nominal' => $transaksiDo->biaya_lain,
-                            'keterangan' => "Pemasukan Biaya Lain (Tunai)"
-                        ]
-                    ];
-
-                    foreach ($komponenPemasukan as $kategori => $data) {
-                        if ($data['nominal'] > 0) {
-                            // Catat laporan keuangan untuk pemasukan
-                            $this->createLaporanKeuangan([
-                                'tanggal' => $transaksiDo->tanggal,
-                                'jenis' => 'masuk',
-                                'tipe_transaksi' => 'transaksi_do',
-                                'kategori_do' => $kategori,
-                                'nominal' => $data['nominal'],
-                                'keterangan' => $data['keterangan'] . " DO #{$transaksiDo->nomor}",
-                                'saldo_sebelum' => $saldoBerjalan,
-                                'saldo_sesudah' => $saldoBerjalan + $data['nominal'],
-                                'transaksi_do_id' => $transaksiDo->id,
-                                'nomor_transaksi' => $transaksiDo->nomor,
-                                'nama_penjual' => $transaksiDo->penjual?->nama,
-                                'mempengaruhi_kas' => true,
-                                'cara_pembayaran' => 'Tunai'
-                            ]);
-
-                            // Update saldo perusahaan
-                            $perusahaan->increment('saldo', $data['nominal']);
-                            $saldoBerjalan += $data['nominal'];
-                        }
-                    }
-
-                    // Proses pembayaran sisa DO tunai
-                    if ($transaksiDo->sisa_bayar > 0) {
-                        $this->createLaporanKeuangan([
-                            'tanggal' => $transaksiDo->tanggal,
-                            'jenis' => 'keluar',
-                            'tipe_transaksi' => 'transaksi_do',
-                            'kategori_do' => 'pembayaran_do',
-                            'nominal' => $transaksiDo->sisa_bayar,
-                            'keterangan' => "Pembayaran Sisa DO #{$transaksiDo->nomor} (Tunai)",
-                            'saldo_sebelum' => $saldoBerjalan,
-                            'saldo_sesudah' => $saldoBerjalan - $transaksiDo->sisa_bayar,
-                            'transaksi_do_id' => $transaksiDo->id,
-                            'nomor_transaksi' => $transaksiDo->nomor,
-                            'nama_penjual' => $transaksiDo->penjual->nama,
-                            'mempengaruhi_kas' => true,
-                            'cara_pembayaran' => 'Tunai'
-                        ]);
-
-                        // Update saldo perusahaan
-                        $perusahaan->decrement('saldo', $transaksiDo->sisa_bayar);
-                        $saldoBerjalan -= $transaksiDo->sisa_bayar;
-                    }
-                    break;
-
-                case 'Transfer':
-                    // Catat transaksi tanpa mempengaruhi saldo kas
-                    if ($transaksiDo->sisa_bayar > 0) {
-                        $this->createLaporanKeuangan([
-                            'tanggal' => $transaksiDo->tanggal,
-                            'jenis' => 'keluar',
-                            'tipe_transaksi' => 'transaksi_do',
-                            'kategori_do' => 'pembayaran_do',
-                            'nominal' => $transaksiDo->sisa_bayar,
-                            'keterangan' => "Pembayaran DO #{$transaksiDo->nomor} via Transfer",
-                            'saldo_sebelum' => $saldoBerjalan,
-                            'saldo_sesudah' => $saldoBerjalan, // Tidak mempengaruhi saldo
-                            'transaksi_do_id' => $transaksiDo->id,
-                            'nomor_transaksi' => $transaksiDo->nomor,
-                            'nama_penjual' => $transaksiDo->penjual->nama,
-                            'mempengaruhi_kas' => false,
-                            'cara_pembayaran' => 'Transfer'
-                        ]);
-                    }
-                    break;
-
-                case 'Cair di Luar':
-                    // Hanya catat transaksi tanpa mempengaruhi saldo
-                    $this->createLaporanKeuangan([
-                        'tanggal' => $transaksiDo->tanggal,
-                        'jenis' => 'keluar',
-                        'tipe_transaksi' => 'transaksi_do',
-                        'kategori_do' => 'pembayaran_do',
-                        'nominal' => $transaksiDo->total,
-                        'keterangan' => "Pembayaran DO #{$transaksiDo->nomor} (Cair di Luar)",
-                        'saldo_sebelum' => $saldoBerjalan,
-                        'saldo_sesudah' => $saldoBerjalan, // Tidak mempengaruhi saldo
-                        'transaksi_do_id' => $transaksiDo->id,
-                        'nomor_transaksi' => $transaksiDo->nomor,
-                        'nama_penjual' => $transaksiDo->penjual->nama,
-                        'mempengaruhi_kas' => false,
-                        'cara_pembayaran' => 'Cair di Luar'
-                    ]);
-                    break;
-            }
-
-            // Proses Pembayaran Hutang (Selalu mempengaruhi kas)
-            if ($transaksiDo->pembayaran_hutang > 0 && $transaksiDo->penjual) {
-                $this->createLaporanKeuangan([
-                    'tanggal' => $transaksiDo->tanggal,
-                    'jenis' => 'masuk',
-                    'tipe_transaksi' => 'transaksi_do',
-                    'kategori_do' => 'pembayaran_hutang',
-                    'nominal' => $transaksiDo->pembayaran_hutang,
-                    'keterangan' => "Pembayaran Hutang DO #{$transaksiDo->nomor}",
-                    'saldo_sebelum' => $saldoBerjalan,
-                    'saldo_sesudah' => $saldoBerjalan + $transaksiDo->pembayaran_hutang,
-                    'transaksi_do_id' => $transaksiDo->id,
-                    'nomor_transaksi' => $transaksiDo->nomor,
-                    'nama_penjual' => $transaksiDo->penjual->nama,
-                    'mempengaruhi_kas' => true,
-                    'cara_pembayaran' => 'Tunai'  // Pembayaran hutang selalu tunai
-                ]);
-
-                // Update saldo dan hutang
-                $perusahaan->increment('saldo', $transaksiDo->pembayaran_hutang);
-                $saldoBerjalan += $transaksiDo->pembayaran_hutang;
-                $transaksiDo->penjual->decrement('hutang', $transaksiDo->pembayaran_hutang);
-            }
-
-            DB::commit();
-
-            // Kirim notifikasi sukses
-            $this->sendSuccessNotification($transaksiDo);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error Proses TransaksiDO:', [
-                'error' => $e->getMessage(),
-                'data' => $transaksiDo->toArray()
-            ]);
-            throw $e;
-        }
+        app(LaporanKeuanganObserver::class)->handleTransaksiDO($transaksiDo);
     }
 
 
@@ -277,9 +125,17 @@ class TransaksiDoObserver
 
     public function updated(TransaksiDo $transaksiDo)
     {
+        // Hapus laporan keuangan lama berdasarkan referensi_id
+        LaporanKeuangan::where([
+            'sumber_transaksi' => 'DO',
+            'referensi_id' => $transaksiDo->id
+        ])->delete();
+
+        // Buat laporan keuangan baru
+        app(LaporanKeuanganObserver::class)->handleTransaksiDO($transaksiDo);
+
         CacheService::clearTransaksiCache($transaksiDo->penjual_id);
 
-        // Log perubahan
         Log::info('TransaksiDO Updated:', [
             'nomor' => $transaksiDo->nomor,
             'changes' => $transaksiDo->getChanges(),
@@ -309,33 +165,26 @@ class TransaksiDoObserver
             }
 
             // Proses pembatalan laporan keuangan
-            $laporanKeuangan = LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->get();
-            $perusahaan = Perusahaan::first();
+            $laporanKeuangan = LaporanKeuangan::where([
+                'sumber_transaksi' => 'DO',
+                'referensi_id' => $transaksiDo->id
+            ])->get();
 
             foreach ($laporanKeuangan as $laporan) {
-                $saldoSebelum = $perusahaan->saldo;
-
-                // Update saldo hanya untuk transaksi yang mempengaruhi kas
-                if ($laporan->mempengaruhi_kas) {
-                    if ($laporan->jenis === 'masuk') {
-                        $perusahaan->decrement('saldo', $laporan->nominal);
-                    } else {
-                        $perusahaan->increment('saldo', $laporan->nominal);
-                    }
-                }
-
                 $dataPembatalan['laporan_keuangan'][] = [
                     'id' => $laporan->id,
-                    'jenis' => $laporan->jenis,
+                    'jenis_transaksi' => $laporan->jenis_transaksi,
                     'nominal' => $laporan->nominal,
-                    'mempengaruhi_kas' => $laporan->mempengaruhi_kas,
-                    'saldo_sebelum' => $saldoSebelum,
-                    'saldo_sesudah' => $perusahaan->fresh()->saldo
+                    'kategori' => $laporan->kategori,
+                    'sub_kategori' => $laporan->sub_kategori
                 ];
             }
 
-            // Hapus laporan
-            LaporanKeuangan::where('transaksi_do_id', $transaksiDo->id)->delete();
+            // Hapus laporan terkait
+            LaporanKeuangan::where([
+                'sumber_transaksi' => 'DO',
+                'referensi_id' => $transaksiDo->id
+            ])->delete();
 
             DB::commit();
 
@@ -371,14 +220,17 @@ class TransaksiDoObserver
             // Validasi data wajib
             $requiredFields = [
                 'tanggal',
-                'jenis',
-                'tipe_transaksi',
+                'jenis_transaksi',
+                'kategori',
+                'sub_kategori',
                 'nominal',
-                'saldo_sebelum',
-                'saldo_sesudah',
+                'sumber_transaksi',
+                'referensi_id',
+                'nomor_referensi',
+                'pihak_terkait',
+                'tipe_pihak',
+                'cara_pembayaran',
                 'keterangan',
-                'mempengaruhi_kas',
-                'cara_pembayaran'
             ];
 
             foreach ($requiredFields as $field) {

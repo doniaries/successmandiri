@@ -20,9 +20,9 @@ return new class extends Migration
             $table->decimal('upah_bongkar', 15, 0);
             $table->decimal('biaya_lain', 15, 0)->default(0);
             $table->string('keterangan_biaya_lain')->nullable();
-            $table->decimal('hutang', 15, 0);
-            $table->decimal('bayar_hutang', 12, 0);
-            $table->decimal('sisa_hutang', 12, 0);
+            $table->decimal('hutang_awal', 15, 0);
+            $table->decimal('pembayaran_hutang', 12, 0);
+            $table->decimal('sisa_hutang_penjual', 12, 0);
             $table->decimal('sisa_bayar', 15, 0);
             $table->string('file_do')->nullable();
             $table->enum('cara_bayar', ['Tunai', 'Transfer'])->default('Tunai');
