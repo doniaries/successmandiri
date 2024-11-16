@@ -28,6 +28,7 @@ class PekerjaResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('nama')
                     ->required()
+                    ->unique(ignoreRecord: true)
                     ->maxLength(255),
                 Forms\Components\TextInput::make('alamat')
                     ->maxLength(255),

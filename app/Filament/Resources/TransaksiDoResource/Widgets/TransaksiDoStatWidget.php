@@ -4,144 +4,134 @@ namespace App\Filament\Resources\TransaksiDoResource\Widgets;
 
 use App\Models\TransaksiDo;
 use App\Models\Perusahaan;
-use App\Models\LaporanKeuangan;
-use Illuminate\Support\Facades\{DB, Log};
-use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\{DB, Cache};
 
 class TransaksiDoStatWidget extends BaseWidget
 {
     protected static ?string $heading = 'Ringkasan Transaksi DO';
     protected static ?int $sort = 1;
-    protected static ?string $pollingInterval = '15s';
+    protected static ?string $pollingInterval = '30s';
+
+    protected const CACHE_KEY = 'transaksido_stats';
+    protected const CACHE_TTL = 300; // 5 minutes
 
     protected function getStats(): array
     {
-        try {
-            // PERBAIKAN 8: Tentukan zona waktu yang konsisten
+        $perusahaanId = auth()->user()->perusahaan_id;
+        $cacheKey = self::CACHE_KEY . "_{$perusahaanId}";
 
-            // $transaksiHariIni = TransaksiDo::where('tanggal', '>=', $today)
-            // Cek data perusahaan
-            $perusahaan = Perusahaan::first();
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($perusahaanId) {
+            $today = Carbon::today();
+            $perusahaan = Perusahaan::find($perusahaanId);
+
             if (!$perusahaan) {
-                return [
-                    Stat::make('Status', 'Data Tidak Tersedia')
-                        ->description('Data perusahaan belum diatur')
-                        ->descriptionIcon('heroicon-m-exclamation-triangle')
-                        ->color('danger')
-                ];
+                return $this->getErrorStats('Data perusahaan tidak ditemukan');
             }
-            $today = now()->setTimezone('Asia/Jakarta')->startOfDay();
 
+            $transaksiHariIni = $this->getTransaksiHariIni($perusahaanId);
 
-            // Data transaksi hari ini
-            $transaksiHariIni = TransaksiDo::whereDate('tanggal', Carbon::today())
-                ->selectRaw('
-                COUNT(*) as total_transaksi,
-                COALESCE(SUM(CAST(tonase as DECIMAL)), 0) as total_tonase,
-                COALESCE(SUM(CAST(sisa_bayar as DECIMAL)), 0) as total_pengeluaran,
-                COALESCE(SUM(CAST(pembayaran_hutang as DECIMAL)), 0) as total_bayar_hutang,
-                COALESCE(SUM(CAST(biaya_lain as DECIMAL)), 0) as total_biaya_lain,
-                COALESCE(SUM(CAST(upah_bongkar as DECIMAL)), 0) as total_upah
-            ')
-                ->first();
-
-            // Pastikan value di-cast ke string
-            $totalTransaksi = (string)($transaksiHariIni->total_transaksi ?? 0);
-            $totalTonase = (string)($transaksiHariIni->total_tonase ?? 0);
-            $saldo = (string)($perusahaan->saldo ?? 0);
-            $totalPengeluaran = (string)($transaksiHariIni->total_pengeluaran ?? 0);
-
-            // Return stats yang sudah dipastikan tipe datanya string
             return [
-                // Stat Saldo
-                Stat::make('Saldo Saat Ini', 'Rp ' . number_format((float)$saldo, 0, ',', '.'))
+                // Saldo Stats
+                Stat::make('Saldo Saat Ini', 'Rp ' . number_format($perusahaan->saldo))
                     ->description('Update otomatis')
                     ->descriptionIcon('heroicon-m-arrow-path')
                     ->color('success'),
 
-                // Stat Transaksi
-                Stat::make('Jumlah Transaksi', "$totalTransaksi Transaksi")
-                    ->description("Total $totalTonase Kg")
+                // Daily Transaction Stats
+                Stat::make('Transaksi DO Hari Ini', "{$transaksiHariIni['total_transaksi']} Transaksi")
+                    ->description("Total {$transaksiHariIni['total_tonase']} Kg")
                     ->descriptionIcon('heroicon-m-scale')
                     ->color('primary'),
 
-                // Stat Pemasukan
-                Stat::make('Total Pemasukan Hari Ini', 'Rp ' . number_format((float)($transaksiHariIni->total_bayar_hutang + $transaksiHariIni->total_biaya_lain + $transaksiHariIni->total_upah), 0, ',', '.'))
-                    ->description('Hutang + Biaya + Upah')
+                // Income Stats
+                Stat::make(
+                    'Total Pemasukan',
+                    'Rp ' . number_format($transaksiHariIni['total_pemasukan'])
+                )
+                    ->description($this->getIncomeDescription($transaksiHariIni))
                     ->descriptionIcon('heroicon-m-arrow-trending-up')
                     ->color('success'),
 
-                // Stat Pengeluaran
-                Stat::make('Total Pengeluaran Hari Ini', 'Rp ' . number_format((float)$totalPengeluaran, 0, ',', '.'))
-                    ->description('Pembayaran DO')
+                // Expense Stats
+                Stat::make(
+                    'Total Pengeluaran',
+                    'Rp ' . number_format($transaksiHariIni['total_pengeluaran'])
+                )
+                    ->description($this->getExpenseDescription($transaksiHariIni))
                     ->descriptionIcon('heroicon-m-arrow-trending-down')
-                    ->color('danger')
+                    ->color('danger'),
             ];
-        } catch (\Exception $e) {
-            Log::error('Error di widget stats: ' . $e->getMessage());
-            // Return fallback stats jika terjadi error
-            return [
-                Stat::make('Status', 'Error')
-                    ->description($e->getMessage())
-                    ->descriptionIcon('heroicon-m-x-circle')
-                    ->color('danger')
-            ];
-        }
+        });
     }
 
-    private function getTransaksiHariIni($today)
+    protected function getTransaksiHariIni(int $perusahaanId): array
     {
-        return TransaksiDo::where('tanggal', '>=', $today)
-            ->selectRaw('
-                COUNT(*) as jumlah_transaksi,
-                COALESCE(SUM(tonase), 0) as total_tonase,
-                COALESCE(SUM(pembayaran_hutang), 0) as total_bayar_hutang,
-                COALESCE(SUM(biaya_lain), 0) as total_biaya_lain,
-                COALESCE(SUM(upah_bongkar), 0) as total_upah_bongkar,
-                COALESCE(SUM(sisa_bayar), 0) as total_sisa_bayar
-            ')
-            ->first();
+        return TransaksiDo::query()
+            ->where('perusahaan_id', $perusahaanId)
+            ->whereDate('tanggal', Carbon::today())
+            ->select([
+                DB::raw('COUNT(*) as total_transaksi'),
+                DB::raw('COALESCE(SUM(tonase), 0) as total_tonase'),
+                DB::raw('COALESCE(SUM(upah_bongkar + biaya_lain), 0) as total_pemasukan'),
+                DB::raw('COALESCE(SUM(sisa_bayar), 0) as total_pengeluaran'),
+                DB::raw('COALESCE(SUM(upah_bongkar), 0) as upah_bongkar'),
+                DB::raw('COALESCE(SUM(biaya_lain), 0) as biaya_lain'),
+                DB::raw('COALESCE(SUM(pembayaran_hutang), 0) as bayar_hutang'),
+                DB::raw('COUNT(CASE WHEN cara_bayar = "Tunai" THEN 1 END) as tunai_count'),
+                DB::raw('COUNT(CASE WHEN cara_bayar = "Transfer" THEN 1 END) as transfer_count'),
+            ])
+            ->first()
+            ->toArray();
     }
 
-    private function getLaporanKeuanganHariIni($today)
+    protected function getIncomeDescription(array $stats): string
     {
-        return LaporanKeuangan::where('tanggal', '>=', $today)
-            ->selectRaw('
-                COALESCE(SUM(CASE WHEN jenis = "masuk" THEN nominal ELSE 0 END), 0) as total_masuk,
-                COALESCE(SUM(CASE WHEN jenis = "keluar" THEN nominal ELSE 0 END), 0) as total_keluar
-            ')
-            ->first();
+        $components = [];
+
+        if ($stats['upah_bongkar'] > 0) {
+            $components[] = 'Upah: Rp ' . number_format($stats['upah_bongkar']);
+        }
+
+        if ($stats['biaya_lain'] > 0) {
+            $components[] = 'Biaya: Rp ' . number_format($stats['biaya_lain']);
+        }
+
+        if ($stats['bayar_hutang'] > 0) {
+            $components[] = 'Hutang: Rp ' . number_format($stats['bayar_hutang']);
+        }
+
+        return empty($components)
+            ? 'Belum ada pemasukan'
+            : implode("\n", $components);
     }
 
-    private function getKomponenPemasukan($transaksiHariIni): string
+    protected function getExpenseDescription(array $stats): string
     {
-        $komponenPemasukan = [];
+        $components = [];
 
-        if ($transaksiHariIni->total_bayar_hutang > 0) {
-            $komponenPemasukan[] = 'Hutang: Rp ' . number_format($transaksiHariIni->total_bayar_hutang, 0, ',', '.');
+        if ($stats['tunai_count'] > 0) {
+            $components[] = "Tunai: {$stats['tunai_count']} DO";
         }
 
-        if ($transaksiHariIni->total_biaya_lain > 0) {
-            $komponenPemasukan[] = 'Biaya Lain: Rp ' . number_format($transaksiHariIni->total_biaya_lain, 0, ',', '.');
+        if ($stats['transfer_count'] > 0) {
+            $components[] = "Transfer: {$stats['transfer_count']} DO";
         }
 
-        if ($transaksiHariIni->total_upah_bongkar > 0) {
-            $komponenPemasukan[] = 'Upah: Rp ' . number_format($transaksiHariIni->total_upah_bongkar, 0, ',', '.');
-        }
-
-        return empty($komponenPemasukan) ?
-            'Belum ada pemasukan' :
-            implode(', ', $komponenPemasukan);
+        return empty($components)
+            ? 'Belum ada pengeluaran'
+            : implode("\n", $components);
     }
 
-    private function getKomponenPengeluaran($transaksiHariIni): string
+    protected function getErrorStats(string $message): array
     {
-        if ($transaksiHariIni && $transaksiHariIni->total_sisa_bayar > 0) {
-            return 'DO: Rp ' . number_format($transaksiHariIni->total_sisa_bayar, 0, ',', '.');
-        }
-
-        return 'Belum ada pengeluaran';
+        return [
+            Stat::make('Error', $message)
+                ->description('Terjadi kesalahan')
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color('danger')
+        ];
     }
 }
