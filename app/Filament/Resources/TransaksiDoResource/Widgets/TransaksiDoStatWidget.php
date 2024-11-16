@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\TransaksiDoResource\Widgets;
 
 use App\Models\TransaksiDo;
-use App\Models\Perusahaan;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Carbon\Carbon;

@@ -16,10 +16,9 @@ class LaporanKeuanganObserver
         try {
             DB::beginTransaction();
 
-            // Ambil data perusahaan sekali saja
-            $perusahaan = Perusahaan::first();
-            if (!$perusahaan) {
-                throw new \Exception('Data perusahaan tidak ditemukan');
+            $team = $transaksiDo->team;
+            if (!$team) {
+                throw new \Exception('Data Perusahan tidak ditemukan');
             }
 
             // Eager load relasi penjual untuk mencegah n+1 query
@@ -49,23 +48,23 @@ class LaporanKeuanganObserver
                 ]);
 
                 // Update saldo perusahaan (pemasukan tunai)
-                $perusahaan->increment('saldo', $transaksiDo->pembayaran_hutang);
+                $team->increment('saldo', $transaksiDo->pembayaran_hutang);
             }
 
             // 3. Handle sisa bayar berdasarkan cara bayar
             if ($transaksiDo->sisa_bayar > 0) {
                 // Validasi saldo untuk pembayaran tunai
                 if ($transaksiDo->cara_bayar === 'Tunai') {
-                    if ($transaksiDo->sisa_bayar > $perusahaan->saldo) {
+                    if ($transaksiDo->sisa_bayar > $team->saldo) {
                         throw new \Exception(
                             "Saldo tidak mencukupi untuk pembayaran tunai.\n" .
-                                "Saldo: Rp " . number_format($perusahaan->saldo, 0, ',', '.') . "\n" .
+                                "Saldo: Rp " . number_format($team->saldo, 0, ',', '.') . "\n" .
                                 "Dibutuhkan: Rp " . number_format($transaksiDo->sisa_bayar, 0, ',', '.')
                         );
                     }
 
                     // Kurangi saldo perusahaan
-                    $perusahaan->decrement('saldo', $transaksiDo->sisa_bayar);
+                    $team->decrement('saldo', $transaksiDo->sisa_bayar);
                 }
 
                 // Catat pengeluaran
@@ -103,7 +102,7 @@ class LaporanKeuanganObserver
      */
     private function catatPemasukanTunai(TransaksiDo $transaksiDo): void
     {
-        $perusahaan = Perusahaan::first();
+        $team = Perusahaan::first();
         $totalPemasukan = 0;
 
         // 1. Upah bongkar
@@ -146,7 +145,7 @@ class LaporanKeuanganObserver
 
         // Update saldo perusahaan sekali saja
         if ($totalPemasukan > 0) {
-            $perusahaan->increment('saldo', $totalPemasukan);
+            $team->increment('saldo', $totalPemasukan);
         }
     }
 

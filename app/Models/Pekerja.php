@@ -17,6 +17,7 @@ class Pekerja extends Model
         'telepon',
         'pendapatan',
         'hutang',
+        'team_id',
     ];
 
     protected $casts = [

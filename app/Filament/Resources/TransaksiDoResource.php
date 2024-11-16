@@ -507,12 +507,10 @@ class TransaksiDoResource extends Resource
     // Tambahan untuk memastikan data diload dengan benar
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ])
-            ->select(['transaksi_do.*']) // Pastikan semua kolom yang dibutuhkan
-            ->with(['penjual']); // Eager load relasi yang dibutuhkan
+        $query = parent::getEloquentQuery();
+
+        // Filter berdasarkan team yang aktif
+        return $query->where('team_id', Filament::getTenant()->id);
     }
 
 

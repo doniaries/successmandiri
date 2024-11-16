@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Team;
 use App\Traits\DokumentasiTrait;
-use App\Traits\GenerateMonthlyNumber;
 use App\Traits\LaporanKeuanganTrait;
+use App\Traits\GenerateMonthlyNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\{DB, Log};
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,6 +22,7 @@ class TransaksiDo extends Model
 
     protected $fillable = [
         'nomor',
+        'team_id',
         'tanggal',
         'penjual_id',
         'nomor_polisi',
@@ -86,6 +88,12 @@ class TransaksiDo extends Model
         $this->validateSaldoTunai($this->sisa_bayar);
         $this->handlePembayaranHutang($this->pembayaran_hutang);
         $this->updateSaldoPerusahaan();
+    }
+
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function penjual(): BelongsTo

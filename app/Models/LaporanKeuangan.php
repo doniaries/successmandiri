@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use App\Models\{Operasional, TransaksiDo};
-use App\Traits\{LaporanKeuanganTrait, DokumentasiTrait};
+use App\Models\Team;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\{Operasional, TransaksiDo};
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\{LaporanKeuanganTrait, DokumentasiTrait};
 
 class LaporanKeuangan extends Model
 {
@@ -28,7 +29,8 @@ class LaporanKeuangan extends Model
         'keterangan',
         'created_at',
         'updated_at',
-        'deleted_at'
+        'deleted_at',
+        'team_id',
     ];
 
     protected $casts = [
@@ -46,6 +48,11 @@ class LaporanKeuangan extends Model
         return $this->belongsTo(TransaksiDo::class);
     }
 
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
     public function operasional()
     {
         return $this->belongsTo(Operasional::class);

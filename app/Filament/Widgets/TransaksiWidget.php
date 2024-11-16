@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\{Penjual, Perusahaan, TransaksiDo};
+use App\Models\{Penjual, Team, TransaksiDo};
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Illuminate\Support\Facades\{DB, Cache};
@@ -19,20 +19,22 @@ class TransaksiWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        // Check jika user adalah superadmin
-        if (auth()->user()->isSuperAdmin()) {
+        // Ganti logika untuk superadmin
+        if (auth()->user()->email === 'superadmin@gmail.com') {
             return $this->getSuperAdminStats();
         }
 
-        return $this->getPerusahaanStats();
+        return $this->getTeamStats();
     }
 
     protected function getSuperAdminStats(): array
     {
+        $allTeams = Team::count();
+        $totalTransaksi = TransaksiDo::sum('total');
         $cacheKey = self::CACHE_KEY . '_superadmin';
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () {
-            $allPerusahaan = Perusahaan::count();
+            $allteam = team::count();
             $totalTransaksi = TransaksiDo::count();
             $totalTonase = TransaksiDo::sum('tonase');
             $totalNilaiTransaksi = TransaksiDo::sum('total');
@@ -48,8 +50,8 @@ class TransaksiWidget extends BaseWidget
                 ->toArray();
 
             return [
-                Stat::make('Total Perusahaan', number_format($allPerusahaan))
-                    ->description('Semua Perusahaan Aktif')
+                Stat::make('Total team', number_format($allteam))
+                    ->description('Semua team Aktif')
                     ->descriptionIcon('heroicon-m-building-office')
                     ->chart($monthlyTrend)
                     ->color('success'),
@@ -75,18 +77,18 @@ class TransaksiWidget extends BaseWidget
         });
     }
 
-    protected function getPerusahaanStats(): array
+    protected function getteamStats(): array
     {
-        $perusahaanId = auth()->user()->perusahaan_id;
-        $cacheKey = self::CACHE_KEY . "_perusahaan_{$perusahaanId}";
+        $teamId = auth()->user()->team_id;
+        $cacheKey = self::CACHE_KEY . "_team_{$teamId}";
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($perusahaanId) {
-            $perusahaan = Perusahaan::find($perusahaanId);
-            $monthlyStats = $this->getMonthlyStats($perusahaanId);
-            $dailyStats = $this->getDailyStats($perusahaanId);
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($teamId) {
+            $team = Team::find($teamId);
+            $monthlyStats = $this->getMonthlyStats($teamId);
+            $dailyStats = $this->getDailyStats($teamId);
 
             return [
-                Stat::make('Saldo Perusahaan', 'Rp ' . number_format($perusahaan->saldo))
+                Stat::make('Saldo team', 'Rp ' . number_format($team->saldo))
                     ->description('Update Realtime')
                     ->descriptionIcon('heroicon-m-banknotes')
                     ->color('success')
@@ -113,12 +115,12 @@ class TransaksiWidget extends BaseWidget
         });
     }
 
-    protected function getMonthlyStats(int $perusahaanId): array
+    protected function getMonthlyStats(int $teamId): array
     {
         $currentMonth = Carbon::now();
 
         $stats = TransaksiDo::query()
-            ->where('perusahaan_id', $perusahaanId)
+            ->where('team_id', $teamId)
             ->whereYear('tanggal', $currentMonth->year)
             ->whereMonth('tanggal', $currentMonth->month)
             ->select([
@@ -130,7 +132,7 @@ class TransaksiWidget extends BaseWidget
 
         // Get monthly trend
         $trend = TransaksiDo::query()
-            ->where('perusahaan_id', $perusahaanId)
+            ->where('team_id', $teamId)
             ->whereYear('tanggal', $currentMonth->year)
             ->whereMonth('tanggal', $currentMonth->month)
             ->select(
@@ -150,10 +152,10 @@ class TransaksiWidget extends BaseWidget
         ];
     }
 
-    protected function getDailyStats(int $perusahaanId): array
+    protected function getDailyStats(int $teamId): array
     {
         $stats = TransaksiDo::query()
-            ->where('perusahaan_id', $perusahaanId)
+            ->where('team_id', $teamId)
             ->whereDate('tanggal', Carbon::today())
             ->select([
                 DB::raw('COUNT(*) as total_transaksi'),
@@ -164,7 +166,7 @@ class TransaksiWidget extends BaseWidget
 
         // Get hourly trend for today
         $hourlyTrend = TransaksiDo::query()
-            ->where('perusahaan_id', $perusahaanId)
+            ->where('team_id', $teamId)
             ->whereDate('tanggal', Carbon::today())
             ->select(
                 DB::raw('HOUR(tanggal) as hour'),

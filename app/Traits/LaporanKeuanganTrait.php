@@ -111,9 +111,9 @@ trait LaporanKeuanganTrait
      */
     protected function updateSaldoPerusahaan(): void
     {
-        $perusahaan = Perusahaan::first();
-        if (!$perusahaan) {
-            throw new \Exception('Data perusahaan tidak ditemukan');
+        $team = $this->team;
+        if (!$team) {
+            throw new \Exception('Data Perusahaan tidak ditemukan');
         }
 
         DB::beginTransaction();

@@ -16,6 +16,7 @@ class Penjual extends Model
         'alamat',
         'telepon',
         'hutang',
+        'team_id',
     ];
 
     protected $casts = [

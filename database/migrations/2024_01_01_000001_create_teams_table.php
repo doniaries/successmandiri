@@ -6,11 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
-        Schema::create('perusahaans', function (Blueprint $table) {
+        Schema::create('teams', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
+            $table->string('slug')->unique()->nullable();
             $table->decimal('saldo', 15, 0)->default(0);
             $table->string('alamat')->nullable();
             $table->string('telepon')->nullable();
@@ -28,8 +32,11 @@ return new class extends Migration
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
-        Schema::dropIfExists('perusahaans');
+        Schema::dropIfExists('teams');
     }
 };

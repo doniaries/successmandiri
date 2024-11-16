@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Team;
 use App\Models\User;
 use App\Models\Penjual;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Operasional extends Model
 
     protected $fillable = [
         'tanggal',
+        'team_id',
         'operasional',
         'kategori', // ganti dari kategori_id
         'tipe_nama',
@@ -60,6 +62,11 @@ class Operasional extends Model
     public function penjual()
     {
         return $this->belongsTo(Penjual::class);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 
     public function pekerja(): BelongsTo

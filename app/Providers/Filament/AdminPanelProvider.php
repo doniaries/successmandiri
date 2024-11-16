@@ -4,12 +4,16 @@ namespace App\Providers\Filament;
 
 use Filament\Pages;
 use Filament\Panel;
+use App\Models\Team;
 use Filament\Widgets;
 use Filament\PanelProvider;
 use App\Settings\GeneralSettings;
+use Filament\Navigation\MenuItem;
 use Filament\Support\Colors\Color;
 use Filament\Http\Middleware\Authenticate;
 use Filament\View\LegacyComponents\Widget;
+use App\Filament\Pages\Tenancy\RegisterTeam;
+use App\Filament\Pages\Tenancy\EditTeamProfile;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Routing\Middleware\SubstituteBindings;
@@ -74,6 +78,18 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            // ->tenantRegistration(RegisterTeam::class)
+            ->tenant(Team::class)
+            ->tenantMenuItems([
+                MenuItem::make()
+                    ->label(fn(): string => auth()->user()->teams()->first()?->name ?? 'Select Team')
+                    ->icon('heroicon-m-building-office')
+            ])
+            ->tenantProfile(Team::class)
+            ->tenant(Team::class, ownershipRelationship: 'team')
+            ->tenantProfile(EditTeamProfile::class)
+            ->tenant(Team::class, slugAttribute: 'slug')
+            ->tenant(Team::class);;
     }
 }
