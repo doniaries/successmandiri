@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Team;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -29,5 +30,15 @@ class Pekerja extends Model
     public function operasional()
     {
         return $this->hasMany(Operasional::class);
+    }
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereNull('deleted_at');
     }
 }

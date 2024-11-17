@@ -51,7 +51,7 @@ class TransaksiWidget extends BaseWidget
 
             return [
                 Stat::make('Total team', number_format($allteam))
-                    ->description('Semua team Aktif')
+                    ->description('Semua Perusahaan Aktif')
                     ->descriptionIcon('heroicon-m-building-office')
                     ->chart($monthlyTrend)
                     ->color('success'),

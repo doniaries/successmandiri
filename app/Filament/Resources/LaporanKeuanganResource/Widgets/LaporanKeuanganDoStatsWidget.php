@@ -5,7 +5,7 @@ namespace App\Filament\Resources\LaporanKeuanganResource\Widgets;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Carbon\Carbon;
-use App\Models\{LaporanKeuangan, TransaksiDo};
+use App\Models\{LaporanKeuangan, Team, TransaksiDo};
 use Illuminate\Support\Facades\DB;
 
 class LaporanKeuanganDoStatsWidget extends BaseWidget
@@ -146,8 +146,8 @@ class LaporanKeuanganDoStatsWidget extends BaseWidget
         ];
     }
 
-    // private function getSaldoTerkini(): int
-    // {
-    //     return Perusahaan::first()?->saldo ?? 0;
-    // }
+    private function getSaldoTerkini(): int
+    {
+        return Team::first()?->saldo ?? 0;
+    }
 }

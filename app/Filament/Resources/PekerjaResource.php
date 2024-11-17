@@ -22,6 +22,7 @@ class PekerjaResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?int $navigationSort = 4;
 
+
     public static function form(Form $form): Form
     {
         return $form
@@ -119,9 +120,7 @@ class PekerjaResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+            ->whereBelongsTo(tenant());
     }
 
     public static function getNavigationBadge(): ?string

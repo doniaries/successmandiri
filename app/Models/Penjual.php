@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Team;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -78,5 +79,11 @@ class Penjual extends Model
         return $this->hasMany(TransaksiDo::class, 'penjual_id')
             ->select('id', 'pembayaran_hutang', 'created_at')
             ->orderBy('created_at', 'desc');
+    }
+
+
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
     }
 }

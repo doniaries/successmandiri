@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use Filament\Panel;
+use Filament\Models\Contracts\FilamentUser;
 use App\Models\Team;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -14,9 +15,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-// use Filament\Models\Contracts\FilamentUser;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements HasTenants
+class User extends Authenticatable implements FilamentUser, HasTenants
 // implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -34,6 +35,7 @@ class User extends Authenticatable implements HasTenants
         'email',
         'password',
         'is_active',
+
 
 
     ];
@@ -64,12 +66,14 @@ class User extends Authenticatable implements HasTenants
     }
 
     //multi tenancy
-    // Relasi many-to-many dengan Team melalui team_user
+    //Relasi many-to-many dengan Team melalui team_user
+
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class, 'team_user')
             ->withTimestamps();
     }
+
 
     public function getTenants(Panel $panel): Collection
     {
@@ -79,7 +83,7 @@ class User extends Authenticatable implements HasTenants
         }
 
         // User lain hanya lihat team mereka
-        return $this->teams;
+        return $this->teams->get();
     }
 
     public function canAccessTenant(Model $tenant): bool
@@ -90,6 +94,11 @@ class User extends Authenticatable implements HasTenants
         }
 
         // User lain hanya bisa akses team mereka
-        return $this->teams->contains($tenant->id);
+        return $this->teams()->where('teams.id', $tenant->id)->exists(); // Gunakan teams() untuk query
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->is_active;
     }
 }
